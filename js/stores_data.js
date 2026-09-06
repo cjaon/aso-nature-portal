@@ -1,279 +1,334 @@
-// 阿瘦自然足第一階段 25 間執行門市清冊
-// 資料來源：研發部工作週報 × 全國門市專櫃分區表 (2025/05/05)
+// 阿瘦自然足 30 間落地執行門市清冊 (依店代號排序)
+// 資料來源：研發部工作週報20260828 × 全國門市專櫃分區表 (2025/05/05)
 window.ASO_STORES = [
+  {
+    "code": "2006",
+    "alphaCode": "M",
+    "dept": "營業三部",
+    "shortName": "西門",
+    "name": "西門門市",
+    "manager": "徐婉庭",
+    "phone": "02-23312757",
+    "address": "台北市萬華區峨嵋街38號1樓",
+    "region": "台北市"
+  },
   {
     "code": "2007",
     "alphaCode": "N",
     "dept": "營業一部",
-    "region": "台北市",
-    "name": "內湖門市",
     "shortName": "內湖",
+    "name": "內湖門市",
     "manager": "葉小芳",
     "phone": "02-27932473",
-    "address": "台北市內湖區成功路四段40號1樓"
+    "address": "台北市內湖區成功路四段40號1樓",
+    "region": "台北市"
   },
   {
     "code": "2009",
     "alphaCode": "P",
     "dept": "營業二部",
-    "region": "台北市",
-    "name": "忠孝門市",
     "shortName": "忠孝",
+    "name": "忠孝門市",
     "manager": "陳瑋玉",
     "phone": "02-27118748",
-    "address": "台北市大安區忠孝東路四段100號1樓"
+    "address": "台北市大安區忠孝東路四段100號1樓",
+    "region": "台北市"
+  },
+  {
+    "code": "2020",
+    "alphaCode": "V",
+    "dept": "營業五部",
+    "shortName": "彰化",
+    "name": "彰化門市",
+    "manager": "林泊呈",
+    "phone": "04-7277612",
+    "address": "彰化縣彰化市和平路38號",
+    "region": "彰化縣"
+  },
+  {
+    "code": "2031",
+    "alphaCode": "AG",
+    "dept": "營業七部",
+    "shortName": "嘉義中山",
+    "name": "嘉義中山門市",
+    "manager": "王怡璇",
+    "phone": "05-2286349",
+    "address": "嘉義市中山路369號",
+    "region": "嘉義市"
   },
   {
     "code": "2038",
     "alphaCode": "AN",
     "dept": "營業七部",
-    "region": "台南市",
-    "name": "台南中正二門市",
     "shortName": "台南中正二",
+    "name": "台南中正二門市",
     "manager": "洪緗芸",
     "phone": "06-2280276",
-    "address": "台南市中西區中正路202、204號"
+    "address": "台南市中西區中正路202、204號",
+    "region": "台南市"
   },
   {
     "code": "2046",
     "alphaCode": "AW",
     "dept": "營業二部",
-    "region": "新北市",
-    "name": "永和門市",
     "shortName": "永和",
+    "name": "永和門市",
     "manager": "陳影珮",
     "phone": "02-22324695",
-    "address": "新北市永和區永和路二段210號1樓"
+    "address": "新北市永和區永和路二段210號1樓",
+    "region": "新北市"
   },
   {
     "code": "2050",
     "alphaCode": "E",
     "dept": "營業四部",
-    "region": "新竹市",
-    "name": "新竹中正門市",
     "shortName": "新竹中正",
+    "name": "新竹中正門市",
     "manager": "李雅玉",
     "phone": "03-5229798",
-    "address": "新竹市中正路58號"
+    "address": "新竹市中正路58號",
+    "region": "新竹市"
   },
   {
     "code": "2051",
     "alphaCode": "L",
     "dept": "營業九部",
-    "region": "高雄市",
-    "name": "鳳山門市",
     "shortName": "鳳山",
+    "name": "鳳山門市",
     "manager": "魏小玲",
     "phone": "07-7992238",
-    "address": "高雄市鳳山區中山路118-1號"
+    "address": "高雄市鳳山區中山路118-1號",
+    "region": "高雄市"
   },
   {
     "code": "2052",
     "alphaCode": "I",
     "dept": "營業一部",
-    "region": "基隆市",
-    "name": "基隆愛三門市",
     "shortName": "基隆愛三",
+    "name": "基隆愛三門市",
     "manager": "蘇雅筠",
     "phone": "02-24250298",
-    "address": "基隆市仁愛區愛三路110號1樓"
+    "address": "基隆市仁愛區愛三路110號1樓",
+    "region": "基隆市"
   },
   {
     "code": "2055",
     "alphaCode": "DA",
     "dept": "營業六部",
-    "region": "台中市",
-    "name": "昌平門市",
     "shortName": "昌平",
+    "name": "昌平門市",
     "manager": "陳宥熏",
     "phone": "04-22321487",
-    "address": "台中市北屯區昌平路1段59號"
+    "address": "台中市北屯區昌平路1段59號",
+    "region": "台中市"
   },
   {
     "code": "2064",
     "alphaCode": "DI",
     "dept": "營業三部",
-    "region": "新北市",
-    "name": "幸福門市",
     "shortName": "幸福",
+    "name": "幸福門市",
     "manager": "陳妍伃(代)",
     "phone": "02-89912910",
-    "address": "新北市新莊區幸福路674號"
+    "address": "新北市新莊區幸福路674號",
+    "region": "新北市"
   },
   {
     "code": "2066",
     "alphaCode": "DK",
     "dept": "營業九部",
-    "region": "高雄市",
-    "name": "五甲門市",
     "shortName": "五甲",
+    "name": "五甲門市",
     "manager": "林沁華",
     "phone": "07-8127936",
-    "address": "高雄市鳳山區五甲二路627號"
+    "address": "高雄市鳳山區五甲二路627號",
+    "region": "高雄市"
   },
   {
     "code": "2070",
     "alphaCode": "DO",
     "dept": "營業七部",
-    "region": "嘉義市",
-    "name": "垂楊門市",
     "shortName": "垂楊",
+    "name": "垂楊門市",
     "manager": "劉靖宜",
     "phone": "05-2838559",
-    "address": "嘉義市垂楊路523號"
+    "address": "嘉義市垂楊路523號",
+    "region": "嘉義市"
   },
   {
     "code": "2072",
     "alphaCode": "BA",
     "dept": "營業一部",
-    "region": "台北市",
-    "name": "東門門市",
     "shortName": "東門",
+    "name": "東門門市",
     "manager": "朱韋馨",
     "phone": "02-23225457",
-    "address": "台北市信義路2段207號"
+    "address": "台北市信義路2段207號",
+    "region": "台北市"
   },
   {
     "code": "2074",
     "alphaCode": "BC",
     "dept": "營業二部",
-    "region": "新北市",
-    "name": "板橋府中門市",
     "shortName": "板橋府中",
+    "name": "板橋府中門市",
     "manager": "賴麗君",
     "phone": "02-29617581",
-    "address": "新北市板橋區中山路一段5號1樓"
+    "address": "新北市板橋區中山路一段5號1樓",
+    "region": "新北市"
   },
   {
     "code": "2087",
     "alphaCode": "BN",
     "dept": "營業三部",
-    "region": "新北市",
-    "name": "三重門市",
     "shortName": "三重",
+    "name": "三重門市",
     "manager": "黃佳雯",
     "phone": "02-89821729",
-    "address": "新北市三重區正義北路25號"
+    "address": "新北市三重區正義北路25號",
+    "region": "新北市"
+  },
+  {
+    "code": "2099",
+    "alphaCode": "SE",
+    "dept": "營業八部",
+    "shortName": "永康大灣",
+    "name": "永康大灣門市",
+    "manager": "林家妤",
+    "phone": "06-2054037",
+    "address": "台南市永康區大灣路703號",
+    "region": "台南市"
   },
   {
     "code": "2103",
     "alphaCode": "CH",
     "dept": "營業二部",
-    "region": "台北市",
-    "name": "雙連門市",
     "shortName": "雙連",
+    "name": "雙連門市",
     "manager": "曾郁涵",
     "phone": "02-25318772",
-    "address": "台北市中山區民生西路25號1樓"
+    "address": "台北市中山區民生西路25號1樓",
+    "region": "台北市"
   },
   {
     "code": "2106",
     "alphaCode": "CJ",
     "dept": "營業三部",
-    "region": "台北市",
-    "name": "龍山門市",
     "shortName": "龍山",
+    "name": "龍山門市",
     "manager": "陳稼嫻",
     "phone": "02-23363948",
-    "address": "台北市萬華區西園路一段186號"
+    "address": "台北市萬華區西園路一段186號",
+    "region": "台北市"
   },
   {
     "code": "2108",
     "alphaCode": "SJ",
     "dept": "營業九部",
-    "region": "高雄市",
-    "name": "明誠門市",
     "shortName": "明誠",
+    "name": "明誠門市",
     "manager": "蔡英雪",
     "phone": "07-3414483",
-    "address": "高雄市三民區明誠二路48號之1"
+    "address": "高雄市三民區明誠二路48號之1",
+    "region": "高雄市"
   },
   {
     "code": "2121",
     "alphaCode": "CN",
     "dept": "營業一部",
-    "region": "台北市",
-    "name": "士林門市",
     "shortName": "士林",
+    "name": "士林門市",
     "manager": "周佳儀",
     "phone": "02-28317724",
-    "address": "台北市士林區中正路214號1樓"
+    "address": "台北市士林區中正路214號1樓",
+    "region": "台北市"
   },
   {
     "code": "2161",
     "alphaCode": "OJ",
     "dept": "營業六部",
-    "region": "台中市",
-    "name": "豐原門市",
     "shortName": "豐原",
+    "name": "豐原門市",
     "manager": "黃慧玲",
     "phone": "04-25155720",
-    "address": "台中市豐原區中正路164號"
+    "address": "台中市豐原區中正路164號",
+    "region": "台中市"
   },
   {
     "code": "2166",
     "alphaCode": "MT",
     "dept": "營業四部",
-    "region": "新竹市",
-    "name": "新竹光復門市",
     "shortName": "新竹光復",
+    "name": "新竹光復門市",
     "manager": "吳秋婷",
     "phone": "03-5775933",
-    "address": "新竹市光復路一段375號"
+    "address": "新竹市光復路一段375號",
+    "region": "新竹市"
   },
   {
     "code": "2178",
     "alphaCode": "OM",
     "dept": "營業六部",
-    "region": "台中市",
-    "name": "大墩門市",
     "shortName": "大墩",
+    "name": "大墩門市",
     "manager": "羅鈞律",
     "phone": "04-23206380",
-    "address": "台中市南屯區大墩路556號"
+    "address": "台中市南屯區大墩路556號",
+    "region": "台中市"
   },
   {
     "code": "2238",
     "alphaCode": "YA",
     "dept": "營業一部",
-    "region": "新北市",
-    "name": "汐止遠雄門市",
     "shortName": "汐止遠雄",
+    "name": "汐止遠雄門市",
     "manager": "陳眉雅",
     "phone": "02-26907783",
-    "address": "新北市汐止區新台五路一段99號1樓"
+    "address": "新北市汐止區新台五路一段99號1樓",
+    "region": "新北市"
   },
   {
     "code": "2308",
     "alphaCode": "VG",
     "dept": "營業九部",
-    "region": "屏東縣",
-    "name": "屏東門市",
     "shortName": "屏東",
+    "name": "屏東門市",
     "manager": "陳燕婷",
     "phone": "08-7326564",
-    "address": "屏東縣屏東市民生路307號"
+    "address": "屏東縣屏東市民生路307號",
+    "region": "屏東縣"
   },
   {
     "code": "2330",
     "alphaCode": "LH",
     "dept": "營業四部",
-    "region": "桃園市",
-    "name": "桃園藝文門市",
     "shortName": "桃園藝文",
+    "name": "桃園藝文門市",
     "manager": "陳智琳",
     "phone": "03-3561780",
-    "address": "桃園市桃園區中正路1202號"
+    "address": "桃園市桃園區中正路1202號",
+    "region": "桃園市"
+  },
+  {
+    "code": "2358",
+    "alphaCode": "VT",
+    "dept": "營業八部",
+    "shortName": "裕誠",
+    "name": "裕誠門市",
+    "manager": "王淑雯",
+    "phone": "07-5586022",
+    "address": "高雄市左營區裕誠區303-1區",
+    "region": "高雄市"
   },
   {
     "code": "2360",
     "alphaCode": "YF",
     "dept": "營業一部",
-    "region": "台北市",
-    "name": "石牌門市",
     "shortName": "石牌",
+    "name": "石牌門市",
     "manager": "林佑宣",
     "phone": "02-28218675",
-    "address": "台北市北投區石牌路二段93之1號1+2樓"
+    "address": "台北市北投區石牌路二段93之1號1+2樓",
+    "region": "台北市"
   }
 ];

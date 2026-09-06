@@ -369,7 +369,7 @@ function initStoreSelector() {
   // Populate Admin Store Filter (Flat list, No Optgroups, No 阿瘦, Aligned)
   const adminStoreFilter = document.getElementById('admin-store-filter');
   if (adminStoreFilter) {
-    let filterHtml = '<option value="all">全部門市 (共25間)</option>';
+    let filterHtml = `<option value="all">全部門市 (共${stores.length}間)</option>`;
     filterHtml += stores.map(s => {
       const cleanName = (s.name || '').replace(/^阿瘦\s*/, '');
       return `<option value="${s.code}">${s.code}　${cleanName}</option>`;
