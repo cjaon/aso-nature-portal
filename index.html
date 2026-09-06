@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ASO+ NATURE 足醫中心 · 3D列印客製鞋墊客訴處置、交件追蹤與門市 Wiki 知識系統</title>
+  <!-- Tailwind CSS via official CDN -->
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col antialiased selection:bg-blue-600 selection:text-white">
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- Hidden Print Area for Work Orders -->
+  <div id="printable-work-order" class="print-only hidden"></div>
+
+  <!-- Top Global Header & Navigation -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs app-nav">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <!-- Logo & Branding -->
+        <div class="flex items-center gap-2.5 sm:gap-3 cursor-pointer" onclick="switchView('announcements')">
+          <img src="assets/aso_nature_logo.png" alt="ASO+ NATURE 足醫中心" class="h-9 sm:h-11 w-auto rounded-lg shadow-xs object-contain border border-slate-100" onerror="this.src='assets/aso_premium_logo.png'">
+          <div class="border-l border-slate-200 pl-2.5 sm:pl-3">
+            <div class="flex items-center gap-1.5 sm:gap-2">
+              <span class="font-bold text-slate-900 text-xs sm:text-sm md:text-base">ASO+ NATURE 自然足</span>
+              <span class="px-1.5 sm:px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 text-[9px] sm:text-[10px] font-bold">足醫中心 · 門市管考</span>
+            </div>
+            <p class="hidden sm:block text-[11px] text-slate-500 font-medium">3D 列印客製鞋墊售後處置 · 後續交件追蹤 · 門市 Wiki (正全 × 顧問 × Jason)</p>
+          </div>
+        </div>
+
+        <!-- Desktop Navigation Bar -->
+        <nav class="hidden md:flex items-center gap-1">
+          <button data-view-target="announcements" class="px-3 py-2 rounded-xl text-xs font-semibold transition-all bg-blue-50 text-blue-600">
+            📢 最新公告
+          </button>
+          <button data-view-target="wiki" class="px-3 py-2 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-all">
+            💡 門市 Wiki
+          </button>
+          <button data-view-target="complaint-form" class="px-3 py-2 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-all">
+            📝 客訴填報
+          </button>
+          <button data-view-target="track-case" class="px-3 py-2 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-all">
+            🔍 進度查詢
+          </button>
+          <div class="h-4 w-px bg-slate-200 mx-1.5"></div>
+          <button data-view-target="admin-cases" class="px-3 py-2 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-all flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+            後台管考
+          </button>
+          <button data-view-target="admin-cms" class="px-3 py-2 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-all">
+            ⚙️ 發布 CMS
+          </button>
+        </nav>
+
+        <!-- Right Quick Actions & Admin Auth Status -->
+        <div class="flex items-center gap-2">
+          <!-- Navbar Admin Auth Container -->
+          <div id="navbar-admin-status"></div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 pb-24 md:pb-8">
+
+    <!-- ==================== VIEW 1: ANNOUNCEMENTS & 3D STANDARDS ==================== -->
+    <section id="view-announcements" class="view-section space-y-6">
+      <!-- Section Header -->
+      <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div class="inline-flex items-center gap-2 text-xs font-bold text-blue-600 uppercase tracking-wider mb-1">
+            <span>Official Notices & 3D Standards</span>
+          </div>
+          <h1 class="text-2xl font-bold text-slate-900">製程最新公告與 3D 取模規範</h1>
+          <p class="text-slate-500 text-sm mt-1">正全工廠排程更新、原物料特性升級與阿瘦門市標準取模 SOP</p>
+        </div>
+        <!-- Search bar -->
+        <div class="relative w-full md:w-80">
+          <input type="text" id="announcement-search" oninput="renderAnnouncements()" placeholder="搜尋公告標題、作者或內容..." class="w-full pl-9 pr-4 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all">
+          <svg class="w-4 h-4 text-slate-400 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Filter Tabs -->
+      <div class="flex overflow-x-auto no-scrollbar gap-2 text-xs font-medium pb-1 -mx-3 px-3 sm:mx-0 sm:px-0">
+        <button onclick="filterAnnouncements('all', this)" class="ann-filter-btn whitespace-nowrap px-4 py-2 rounded-xl bg-slate-900 text-white transition-all">
+          全部公告
+        </button>
+        <button onclick="filterAnnouncements('製程公告', this)" class="ann-filter-btn whitespace-nowrap px-4 py-2 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all">
+          📣 製程最新公告
+        </button>
+        <button onclick="filterAnnouncements('3D取模規範', this)" class="ann-filter-btn whitespace-nowrap px-4 py-2 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all">
+          📐 3D 取模規範 (防退件)
+        </button>
+        <button onclick="filterAnnouncements('門市服務SOP', this)" class="ann-filter-btn whitespace-nowrap px-4 py-2 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all">
+          📋 門市服務 SOP
+        </button>
+      </div>
+
+      <!-- Announcements Grid -->
+      <div id="announcements-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Rendered via JS -->
+      </div>
+    </section>
+
+    <!-- ==================== VIEW 2: STORE WIKI KNOWLEDGE BASE ==================== -->
+    <section id="view-wiki" class="view-section hidden space-y-6">
+      <div class="bg-gradient-to-r from-slate-900 to-blue-950 rounded-2xl p-6 md:p-8 text-white shadow-xs">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 text-xs font-semibold mb-2">
+              <span>阿瘦門市第一線即時檢索庫</span>
+            </div>
+            <h1 class="text-2xl font-bold">客訴處置 Wiki 知識庫</h1>
+            <p class="text-slate-300 text-sm mt-1">查詢過往真實案例、問題原因與處置手段，明確標註由誰處理（正全／顧問／Jason）</p>
+          </div>
+          <!-- Quick Search -->
+          <div class="relative w-full md:w-96">
+            <input type="text" id="wiki-search" oninput="renderWikiList()" placeholder="輸入鞋款、症狀（如：ASICS、足弓刺痛、做錯）..." class="w-full pl-9 pr-4 py-2.5 text-sm bg-slate-800/90 text-white border border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-slate-400">
+            <svg class="w-4 h-4 text-slate-400 absolute left-3 top-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
+          </div>
+        </div>
+
+        <!-- Filter Controls inside Banner -->
+        <div class="mt-6 pt-6 border-t border-slate-800 flex flex-col sm:flex-row flex-wrap gap-4 items-start sm:items-center text-xs">
+          <div class="flex items-center gap-2 overflow-x-auto no-scrollbar w-full sm:w-auto pb-1">
+            <span class="text-slate-400 whitespace-nowrap">客訴分類：</span>
+            <button onclick="filterWikiCategory('all', this)" class="wiki-cat-btn whitespace-nowrap px-3 py-1.5 rounded-lg bg-blue-600 text-white font-medium">全部</button>
+            <button onclick="filterWikiCategory('鞋墊做錯', this)" class="wiki-cat-btn whitespace-nowrap px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">鞋墊做錯</button>
+            <button onclick="filterWikiCategory('尺寸不符', this)" class="wiki-cat-btn whitespace-nowrap px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">尺寸不符</button>
+            <button onclick="filterWikiCategory('穿著不適', this)" class="wiki-cat-btn whitespace-nowrap px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">穿著不適</button>
+          </div>
+
+          <div class="flex items-center gap-2 overflow-x-auto no-scrollbar w-full sm:w-auto pb-1">
+            <span class="text-slate-400 whitespace-nowrap">主要處理人：</span>
+            <button onclick="filterWikiProcessor('all', this)" class="wiki-proc-btn whitespace-nowrap px-3 py-1.5 rounded-lg bg-slate-900 text-white font-medium border border-slate-700">全部</button>
+            <button onclick="filterWikiProcessor('正全', this)" class="wiki-proc-btn whitespace-nowrap px-3 py-1.5 rounded-lg bg-slate-800 text-amber-300 hover:bg-slate-700 border border-slate-700">🏭 正全製造商</button>
+            <button onclick="filterWikiProcessor('顧問', this)" class="wiki-proc-btn whitespace-nowrap px-3 py-1.5 rounded-lg bg-slate-800 text-purple-300 hover:bg-slate-700 border border-slate-700">🩺 顧問</button>
+            <button onclick="filterWikiProcessor('Jason', this)" class="wiki-proc-btn whitespace-nowrap px-3 py-1.5 rounded-lg bg-slate-800 text-blue-300 hover:bg-slate-700 border border-slate-700">👤 Jason</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Wiki Grid -->
+      <div id="wiki-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Rendered via JS -->
+      </div>
+    </section>
+
+    <!-- ==================== VIEW 3: COMPLAINT FORM SUBMISSION ==================== -->
+    <section id="view-complaint-form" class="view-section hidden space-y-6">
+      <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs">
+        <div class="max-w-3xl">
+          <div class="inline-flex items-center gap-2 text-xs font-bold text-rose-600 uppercase tracking-wider mb-1">
+            <span>Customer Complaint & Warranty Service</span>
+          </div>
+          <h1 class="text-2xl font-bold text-slate-900">客訴案件受理與問題填報表單</h1>
+          <p class="text-slate-500 text-sm mt-1">針對阿瘦門市鞋墊做錯、尺寸不合、穿著不適等狀況建立專案工單，系統將自動推薦相關 Wiki 處置參考。</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Form Left 2 Columns -->
+        <div class="lg:col-span-2">
+          <form id="complaint-submission-form" class="bg-white rounded-2xl p-6 md:p-8 border border-slate-200 shadow-xs space-y-6">
+            
+            <!-- Group 1: 門市與客戶基本資訊 -->
+            <div>
+              <h2 class="text-base font-bold text-slate-900 mb-4 pb-2 border-b border-slate-100 flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-blue-600"></span>
+                一、 受理門市與客戶原訂單資訊
+              </h2>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <!-- 門市選單 (滿版兩欄) -->
+                <div class="sm:col-span-2">
+                  <label class="block text-xs font-bold text-slate-700 mb-1">
+                    受理門市選單 <span class="text-rose-500">*</span>
+                    <span class="font-normal text-slate-400 ml-1 text-[11px]">(依店代號排序，選擇後自動填入店代號與店名)</span>
+                  </label>
+                  <select id="complaint-store-select" class="w-full text-sm px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white font-mono transition-all text-slate-800">
+                    <!-- Populated via JS -->
+                  </select>
+                </div>
+
+                <!-- 門市代號與門市名稱 (左右兩欄對齊) -->
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 mb-1">門市代號 <span class="text-rose-500">*</span></label>
+                  <input type="text" id="complaint-store-code" value="2009" required placeholder="例如：2009" class="w-full text-sm px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-mono font-bold text-slate-800 focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all">
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 mb-1">門市名稱 <span class="text-rose-500">*</span></label>
+                  <input type="text" id="complaint-store-name" value="忠孝門市" required placeholder="例如：忠孝門市" class="w-full text-sm px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all">
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 mb-1">客戶姓名 <span class="text-rose-500">*</span></label>
+                  <input type="text" id="complaint-name" required placeholder="例如：張先生" class="w-full text-sm px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all">
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 mb-1">聯絡電話 <span class="text-rose-500">*</span></label>
+                  <input type="tel" id="complaint-phone" required placeholder="例如：0912-345-678" class="w-full text-sm px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all">
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 mb-1">原訂單 / 會員編號 <span class="text-rose-500">*</span></label>
+                  <input type="text" id="complaint-order" required placeholder="例如：ORD-2026-8819" class="w-full text-sm px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white font-mono transition-all">
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 mb-1">電子信箱 (選填)</label>
+                  <input type="email" id="complaint-email" placeholder="接收進度通知信" class="w-full text-sm px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all">
+                </div>
+              </div>
+            </div>
+
+            <!-- Group 2: 客訴分類與鞋況 -->
+            <div>
+              <h2 class="text-base font-bold text-slate-900 mb-4 pb-2 border-b border-slate-100 flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                二、 客訴分類與鞋況診斷
+              </h2>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 mb-1">主要客訴分類 <span class="text-rose-500">*</span></label>
+                  <select id="complaint-category" required class="w-full text-sm px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all font-medium">
+                    <option value="鞋墊做錯">鞋墊做錯 (規格不符 / 材質做錯 / 左右顛倒)</option>
+                    <option value="尺寸不符">尺寸不符 (前掌過長起皺 / 邊緣卡死無法入鞋)</option>
+                    <option value="穿著不適">客人穿著不適 (足弓頂撞劇痛 / 起水泡 / 異物感)</option>
+                    <option value="其他">其他外觀瑕疵 / 脫膠退換</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 mb-1">緊急程度 (優先級)</label>
+                  <select id="complaint-priority" class="w-full text-sm px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all font-medium">
+                    <option value="一般">一般案件 (常規工作天處理)</option>
+                    <option value="急件" selected>急件 (48 小時內優先調校/重製)</option>
+                    <option value="極度緊急">極度緊急 (當日立即專案會診)</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 mb-1">搭配穿著之鞋款與型號</label>
+                  <input type="text" id="complaint-shoe" placeholder="例如：ASICS KAYANO 30 / HOKA / 阿瘦皮鞋" class="w-full text-sm px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all">
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 mb-1">鞋子尺碼與楦頭</label>
+                  <input type="text" id="complaint-size" placeholder="例如：26.5 cm (2E寬楦)" class="w-full text-sm px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all">
+                </div>
+              </div>
+
+              <div class="mb-4">
+                <label class="block text-xs font-bold text-slate-700 mb-1">已穿著時間與頻率</label>
+                <select id="complaint-days" class="w-full text-sm px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all">
+                  <option value="初次試穿即不適">初次試穿即不適 (完全無法穿著)</option>
+                  <option value="穿著 1~3 天">穿著 1~3 天 (初期磨合期)</option>
+                  <option value="穿著 1~2 週">穿著 1~2 週 (已適應數天仍痛)</option>
+                  <option value="穿著超過一個月">穿著超過一個月 (近期突發不適)</option>
+                </select>
+              </div>
+
+              <!-- Interactive Foot Hotspots -->
+              <div class="foot-diagram-box p-4">
+                <div class="flex items-center justify-between mb-2">
+                  <label class="text-xs font-bold text-slate-800">
+                    📍 足部不適或瑕疵部位多選標註 (可點選多項)：
+                  </label>
+                  <span class="text-[11px] text-slate-500">點選快速標記痛點</span>
+                </div>
+                <div class="flex flex-wrap gap-2 mb-3">
+                  <span data-pain-point="內側足弓過高" class="hotspot-chip text-xs px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700">內側足弓過高/太頂</span>
+                  <span data-pain-point="外側邊緣壓迫" class="hotspot-chip text-xs px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700">外側邊緣壓迫磨腳</span>
+                  <span data-pain-point="大拇趾蹠骨疼痛" class="hotspot-chip text-xs px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700">大拇趾蹠骨痛/起水泡</span>
+                  <span data-pain-point="前掌邊緣溢出" class="hotspot-chip text-xs px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700">前掌波浪起皺無法入鞋</span>
+                  <span data-pain-point="後跟杯鬆脫不穩" class="hotspot-chip text-xs px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700">後跟杯滑動/不吻合</span>
+                  <span data-pain-point="左右足弓高度不對稱" class="hotspot-chip text-xs px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700">左右腳高度高低落差</span>
+                  <span data-pain-point="材質硬度太硬" class="hotspot-chip text-xs px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700">材質硬度太硬無彈性</span>
+                </div>
+                <div class="text-xs text-slate-600 flex items-center gap-1.5">
+                  <span class="font-bold text-slate-700">目前選取：</span>
+                  <div id="selected-pain-display" class="flex flex-wrap gap-1">
+                    <span class="text-slate-400 italic">尚未選取痛點部位</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Group 3: 詳細描述與照片模擬 -->
+            <div>
+              <h2 class="text-base font-bold text-slate-900 mb-4 pb-2 border-b border-slate-100 flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-purple-600"></span>
+                三、 客訴詳細事由與照片上傳
+              </h2>
+              <div class="space-y-4">
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 mb-1">客戶反映之詳細事由與情境描述 <span class="text-rose-500">*</span></label>
+                  <textarea id="complaint-notes" required rows="3" placeholder="請詳細記錄客戶反映的狀況（如：走幾步路即刺痛、鞋墊前緣被鞋頭擠壓折起、跟原版型不合等）..." class="w-full text-sm p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"></textarea>
+                </div>
+                <!-- Photo Upload Simulator -->
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 mb-1">實物與瑕疵照片上傳 (原鞋入鞋照 / 鞋墊對比 / 痛點拍照)</label>
+                  <div class="border-2 border-dashed border-slate-200 rounded-xl p-4 text-center bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer">
+                    <svg class="w-8 h-8 mx-auto text-slate-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                    </svg>
+                    <span class="text-xs text-blue-600 font-semibold">點擊或拖曳照片至此處 (支援 JPG / PNG)</span>
+                    <p class="text-[11px] text-slate-400 mt-0.5">系統將自動壓縮保存供正全工廠與顧問調閱比對</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="pt-4 border-t border-slate-100 flex justify-end">
+              <button type="submit" class="w-full sm:w-auto px-8 py-3 sm:py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold shadow-md hover:bg-blue-700 transition-colors flex items-center justify-center gap-2">
+                <span>確認送出客訴案件</span>
+                <span>→</span>
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Right Side: Live Wiki Recommendations -->
+        <div class="space-y-6">
+          <!-- Live Wiki Card -->
+          <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs">
+            <h3 class="text-sm font-bold text-slate-900 mb-3 flex items-center justify-between">
+              <span class="flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                門市即時處置參考
+              </span>
+              <span class="text-[10px] text-slate-400">智能關聯</span>
+            </h3>
+            <div id="form-wiki-suggestions">
+              <!-- Dynamically populated via JS -->
+            </div>
+          </div>
+
+          <!-- Process Commitment Card -->
+          <div class="bg-slate-900 rounded-2xl p-5 text-white shadow-xs space-y-3">
+            <h3 class="text-xs font-bold text-cyan-400 uppercase tracking-wider">三大情境處置 SLA 承諾</h3>
+            <div class="space-y-2.5 text-xs text-slate-300">
+              <div class="p-2 rounded-lg bg-slate-800 border border-slate-700">
+                <span class="font-bold text-red-300 block">🏭 鞋墊做錯 (正全工廠)：</span>
+                <span>加急綠色通道 100% 免費重製，48 小時出貨。</span>
+              </div>
+              <div class="p-2 rounded-lg bg-slate-800 border border-slate-700">
+                <span class="font-bold text-amber-300 block">🛠️ 尺寸不符 (門市技師)：</span>
+                <span>依原鞋原廠鞋墊樣板現場修磨，15 分鐘立等可取。</span>
+              </div>
+              <div class="p-2 rounded-lg bg-slate-800 border border-slate-700">
+                <span class="font-bold text-cyan-300 block">🩺 穿著不適 (顧問會診)：</span>
+                <span>降高 1.5mm 貼附減壓泡棉，隨附漸進磨合指南。</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== VIEW 4: TRACK CASE STATUS ==================== -->
+    <section id="view-track-case" class="view-section hidden space-y-6">
+      <!-- Search Banner -->
+      <div class="bg-white rounded-2xl p-6 md:p-8 border border-slate-200 shadow-xs">
+        <div class="max-w-2xl mx-auto text-center space-y-3">
+          <div class="inline-flex items-center gap-2 text-xs font-bold text-blue-600 uppercase tracking-wider">
+            <span>Case Progress Tracker</span>
+          </div>
+          <h1 class="text-2xl font-bold text-slate-900">客訴案件即時處理進度查詢</h1>
+          <p class="text-slate-500 text-sm">輸入您的案件編號（例如：<code>CMP-20260905-0102</code>）或原訂單編號即可查詢最新進度與技師診斷</p>
+
+          <div class="flex gap-2 max-w-lg mx-auto pt-2">
+            <input type="text" id="track-search-input" value="CMP-20260905-0102" placeholder="輸入案件編號 (CMP-...) 或 原訂單號" class="flex-1 px-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white font-mono transition-all">
+            <button id="track-search-btn" class="px-5 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold shadow-sm hover:bg-blue-700 transition-colors">
+              查詢案件
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Empty State -->
+      <div id="track-empty-state" class="hidden text-center py-16 bg-white rounded-2xl border border-slate-200 text-slate-400">
+        <svg class="w-12 h-12 mx-auto mb-3 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        <p class="text-base font-bold text-slate-700 mb-1">查無此案件編號或訂單</p>
+        <p class="text-xs text-slate-400">請確認案號格式是否正確（例：CMP-20260905-0102），或洽詢門市人員為您查詢。</p>
+      </div>
+
+      <!-- Result Card -->
+      <div id="track-result-card" class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+        <!-- Result Top Header -->
+        <div class="bg-slate-50 border-b border-slate-200 p-6 flex flex-wrap justify-between items-center gap-4">
+          <div>
+            <div class="flex items-center gap-2 mb-1">
+              <span class="font-mono text-lg font-bold text-slate-900" id="track-case-no">CMP-20260905-0102</span>
+              <span id="track-category-badge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-800">鞋墊做錯</span>
+              <span id="track-priority-badge" class="px-2 py-0.5 rounded bg-slate-200 text-slate-700 text-xs font-semibold">急件</span>
+            </div>
+            <div class="text-xs text-slate-500 flex flex-wrap gap-4">
+              <span>受理門市：<b id="track-store-info" class="text-slate-800">2009 忠孝門市</b></span>
+              <span>客戶：<b id="track-customer-name" class="text-slate-700">張冠廷 貴賓</b></span>
+              <span>原訂單號：<span id="track-order-no" class="font-mono text-slate-700 font-semibold">ORD-2026-9041</span></span>
+              <span>立案時間：<span id="track-created-at" class="font-mono">2026-09-05 10:30</span></span>
+            </div>
+          </div>
+
+          <div class="text-right">
+            <span class="text-xs text-slate-400 block">指定責任處理端</span>
+            <span id="track-processor-name" class="font-bold text-amber-700 text-sm">正全義肢鞋墊製造商</span>
+          </div>
+        </div>
+
+        <!-- 4-Stage Visual Timeline -->
+        <div class="p-6 md:p-8 border-b border-slate-200 bg-white">
+          <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-6 text-center">
+            案件即時處理時序 (Workflow Stage)
+          </h3>
+          <div id="tracking-timeline-steps" class="flex justify-between items-center max-w-2xl mx-auto">
+            <!-- Dynamically populated via renderTrackingTimeline -->
+          </div>
+        </div>
+
+        <!-- Result Content Details -->
+        <div class="p-6 md:p-8 grid grid-cols-1 lg:grid-cols-2 gap-6 text-xs">
+          <!-- Left Column -->
+          <div class="space-y-4">
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-2">
+              <h4 class="font-bold text-slate-900 text-sm">【原鞋況與足部不適主訴】</h4>
+              <div>
+                <span class="text-slate-500">搭配鞋款：</span>
+                <span id="track-shoe-info" class="font-medium text-slate-800">ASICS GEL-KAYANO 30</span>
+              </div>
+              <div>
+                <span class="text-slate-500">痛點標記：</span>
+                <div id="track-pain-points" class="inline-flex flex-wrap gap-1 mt-1"></div>
+              </div>
+              <div class="pt-2 border-t border-slate-200">
+                <span class="text-slate-500 block mb-0.5">客訴原始描述：</span>
+                <p id="track-notes" class="text-slate-700 bg-white p-2.5 rounded-lg border border-slate-200 leading-relaxed"></p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column -->
+          <div class="space-y-4">
+            <div class="bg-blue-50/60 p-4 rounded-xl border border-blue-150 space-y-2">
+              <h4 class="font-bold text-blue-900 text-sm flex items-center justify-between">
+                <span>【技術團隊診斷與核定處置】</span>
+                <span id="track-action-plan" class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold text-xs">急件重製</span>
+              </h4>
+              <div class="pt-1">
+                <span class="text-slate-500 block mb-0.5">處理過程與原因說明：</span>
+                <p id="track-official-diagnosis" class="text-slate-700 bg-white p-2.5 rounded-lg border border-blue-200 leading-relaxed font-medium"></p>
+              </div>
+              <div class="pt-2 border-t border-blue-200 grid grid-cols-2 gap-2">
+                <div>
+                  <span class="text-slate-500">交件方式：</span>
+                  <span id="track-delivery-method" class="font-bold text-slate-800">黑貓宅配到府</span>
+                </div>
+                <div>
+                  <span class="text-slate-500">物流追蹤碼：</span>
+                  <span id="track-tracking-code" class="font-mono font-bold text-blue-700">9021-8832-1102</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== VIEW 5: ADMIN MANAGEMENT DASHBOARD ==================== -->
+    <section id="view-admin-cases" class="view-section hidden space-y-6">
+      <!-- Admin Header -->
+      <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <div class="inline-flex items-center gap-2 text-xs font-bold text-amber-600 uppercase tracking-wider mb-1">
+            <span>Admin & Lab Control Center</span>
+          </div>
+          <h1 class="text-2xl font-bold text-slate-900">後台案件管考與履約追蹤中心</h1>
+          <p class="text-slate-500 text-sm mt-1">審核重製工單、調閱 3D 取模數據、派工給正全或顧問、登錄 D+3 / D+14 關懷</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="exportComplaintsCsv()" class="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-colors flex items-center gap-1.5 shadow-sm">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+            <span>匯出 CSV 報表</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI Metrics Cards -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
+          <span class="text-xs text-slate-400 font-medium block">總受理案件</span>
+          <span id="metric-total" class="text-2xl font-black text-slate-900 mt-1 block">4</span>
+        </div>
+        <div class="bg-white p-4 rounded-xl border border-purple-200 bg-purple-50/30 shadow-xs">
+          <span class="text-xs text-purple-700 font-bold block">待受理 / 診斷中</span>
+          <span id="metric-pending" class="text-2xl font-black text-purple-900 mt-1 block">0</span>
+        </div>
+        <div class="bg-white p-4 rounded-xl border border-amber-200 bg-amber-50/30 shadow-xs">
+          <span class="text-xs text-amber-700 font-bold block">正全重製 / 修磨中</span>
+          <span id="metric-in-progress" class="text-2xl font-black text-amber-900 mt-1 block">2</span>
+        </div>
+        <div class="bg-white p-4 rounded-xl border border-blue-200 bg-blue-50/30 shadow-xs">
+          <span class="text-xs text-blue-700 font-bold block">售後追蹤期 (D+3/14)</span>
+          <span id="metric-tracking" class="text-2xl font-black text-blue-900 mt-1 block">1</span>
+        </div>
+        <div class="bg-white p-4 rounded-xl border border-emerald-200 bg-emerald-50/30 shadow-xs">
+          <span class="text-xs text-emerald-700 font-bold block">已結案 (Wiki沉澱)</span>
+          <span id="metric-closed" class="text-2xl font-black text-emerald-900 mt-1 block">1</span>
+        </div>
+      </div>
+
+      <!-- Filter Controls & Search -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-4">
+        <!-- Status Tabs -->
+        <div class="flex border-b border-slate-100 text-xs font-semibold overflow-x-auto gap-4">
+          <button onclick="filterAdminStatus('all', this)" class="admin-status-tab pb-2.5 border-b-2 border-blue-600 text-blue-600 font-bold whitespace-nowrap">全部案件</button>
+          <button onclick="filterAdminStatus('待受理', this)" class="admin-status-tab pb-2.5 border-b-2 border-transparent text-slate-500 hover:text-slate-800 whitespace-nowrap">待受理</button>
+          <button onclick="filterAdminStatus('正全重製中', this)" class="admin-status-tab pb-2.5 border-b-2 border-transparent text-slate-500 hover:text-slate-800 whitespace-nowrap">正全重製中</button>
+          <button onclick="filterAdminStatus('門市微調中', this)" class="admin-status-tab pb-2.5 border-b-2 border-transparent text-slate-500 hover:text-slate-800 whitespace-nowrap">門市微調中</button>
+          <button onclick="filterAdminStatus('待交件', this)" class="admin-status-tab pb-2.5 border-b-2 border-transparent text-slate-500 hover:text-slate-800 whitespace-nowrap">待交件</button>
+          <button onclick="filterAdminStatus('售後追蹤期', this)" class="admin-status-tab pb-2.5 border-b-2 border-transparent text-slate-500 hover:text-slate-800 whitespace-nowrap">售後追蹤期</button>
+          <button onclick="filterAdminStatus('已結案', this)" class="admin-status-tab pb-2.5 border-b-2 border-transparent text-slate-500 hover:text-slate-800 whitespace-nowrap">已結案</button>
+        </div>
+
+        <!-- Search, Store and Processor Filter -->
+        <div class="flex flex-col sm:flex-row justify-between gap-3 text-xs">
+          <div class="relative flex-1">
+            <input type="text" id="admin-case-search" placeholder="搜尋案號、客戶、門市、鞋款、原單號..." class="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <svg class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2">
+            <div class="flex items-center gap-1.5">
+              <span class="text-slate-400 whitespace-nowrap">門市：</span>
+              <select id="admin-store-filter" class="px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-lg font-medium">
+                <option value="all">全部門市</option>
+              </select>
+            </div>
+
+            <div class="flex items-center gap-1.5">
+              <span class="text-slate-400 whitespace-nowrap">處理人：</span>
+              <select id="admin-assigned-filter" class="px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-lg font-medium">
+                <option value="all">全部人員</option>
+                <option value="正全">正全義肢鞋墊製造商</option>
+                <option value="顧問">專業顧問</option>
+                <option value="Jason">Jason</option>
+                <option value="門市">門市技師</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Table -->
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-[760px] text-left">
+            <thead>
+              <tr class="bg-slate-50 border-y border-slate-200 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
+                <th class="py-3 px-4">案件編號</th>
+                <th class="py-3 px-4">受理門市</th>
+                <th class="py-3 px-4">客戶 / 原訂單</th>
+                <th class="py-3 px-4">客訴分類</th>
+                <th class="py-3 px-4">處理狀態</th>
+                <th class="py-3 px-4">責任處理人</th>
+                <th class="py-3 px-4">立案時間</th>
+                <th class="py-3 px-4 text-right">管理操作</th>
+              </tr>
+            </thead>
+            <tbody id="admin-cases-table-body" class="divide-y divide-slate-100">
+              <!-- Dynamically populated via renderAdminCases -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== VIEW 6: CMS FOR ANNOUNCEMENTS & SOP ==================== -->
+    <section id="view-admin-cms" class="view-section hidden space-y-6">
+      <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs">
+        <div class="max-w-3xl">
+          <div class="inline-flex items-center gap-2 text-xs font-bold text-indigo-600 uppercase tracking-wider mb-1">
+            <span>Content Management System</span>
+          </div>
+          <h1 class="text-2xl font-bold text-slate-900">製程公告與 3D 取模規範發布 CMS</h1>
+          <p class="text-slate-500 text-sm mt-1">正全工廠、顧問與 Jason 可於此處發布最新製程異動、材料更新與取模 SOP（受密碼保護）。</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Publish Form -->
+        <div class="lg:col-span-1">
+          <form onsubmit="handleNewAnnouncementSubmit(event)" class="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4">
+            <h2 class="text-base font-bold text-slate-900 pb-2 border-b border-slate-100">
+              發布新公告 / SOP
+            </h2>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">公告標題 <span class="text-rose-500">*</span></label>
+              <input type="text" id="new-ann-title" required placeholder="例如：【製程更新】EVA硬度規格調整" class="w-full text-xs px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:bg-white">
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">公告分類</label>
+                <select id="new-ann-category" class="w-full text-xs px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-lg">
+                  <option value="製程公告">製程公告</option>
+                  <option value="3D取模規範">3D取模規範</option>
+                  <option value="門市服務SOP">門市服務SOP</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">發布單位/人</label>
+                <select id="new-ann-author" class="w-full text-xs px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-lg">
+                  <option value="正全義肢鞋墊製造商">正全義肢鞋墊製造商</option>
+                  <option value="專業顧問">專業顧問</option>
+                  <option value="Jason">Jason</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label class="flex items-center gap-2 text-xs font-semibold text-slate-700">
+                <input type="checkbox" id="new-ann-pinned" class="rounded text-blue-600">
+                <span>設為置頂公告 (Pinned)</span>
+              </label>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">摘要簡述 <span class="text-rose-500">*</span></label>
+              <textarea id="new-ann-summary" rows="2" required placeholder="前台卡片顯示之重點摘要..." class="w-full text-xs p-2 bg-slate-50 border border-slate-200 rounded-lg"></textarea>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">全文內容 <span class="text-rose-500">*</span></label>
+              <textarea id="new-ann-content" rows="6" required placeholder="詳細 SOP 或製程說明..." class="w-full text-xs p-2 bg-slate-50 border border-slate-200 rounded-lg"></textarea>
+            </div>
+            <button type="submit" class="w-full py-2.5 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition-colors shadow-sm">
+              確認發布公告
+            </button>
+          </form>
+        </div>
+
+        <!-- Announcement List Table -->
+        <div class="lg:col-span-2">
+          <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs">
+            <h2 class="text-base font-bold text-slate-900 mb-4 pb-2 border-b border-slate-100">
+              已發布公告清單
+            </h2>
+            <div class="overflow-x-auto">
+              <table class="w-full min-w-[640px] text-left">
+                <thead>
+                  <tr class="bg-slate-50 border-y border-slate-200 text-slate-500 text-[11px] font-bold">
+                    <th class="py-2.5 px-4">標題</th>
+                    <th class="py-2.5 px-4">分類</th>
+                    <th class="py-2.5 px-4">發布者</th>
+                    <th class="py-2.5 px-4">日期</th>
+                    <th class="py-2.5 px-4 text-right">操作</th>
+                  </tr>
+                </thead>
+                <tbody id="cms-announcements-table">
+                  <!-- Dynamically populated via renderCmsAnnouncements -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ==================== MODALS & DRAWERS ==================== -->
+
+  <!-- 0. Admin Authentication Password Modal -->
+  <div id="admin-auth-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-6 border border-slate-200 shadow-2xl animate-fade-in">
+      <div class="w-12 h-12 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center mx-auto mb-3">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+        </svg>
+      </div>
+      <h3 class="text-lg font-bold text-slate-900 text-center mb-1">管理員身分驗證</h3>
+      <p class="text-xs text-slate-500 text-center mb-4 leading-relaxed">
+        此區塊僅限受授權之管理人員（正全／顧問／Jason）操作，請輸入通行密碼。
+      </p>
+
+      <form id="admin-auth-form" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">管理員通行密碼</label>
+          <input type="password" id="admin-auth-password" required placeholder="請輸入安全通行密碼" autocomplete="current-password" class="w-full text-center text-sm px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white font-mono tracking-widest transition-all">
+        </div>
+
+        <div class="flex gap-2 pt-1">
+          <button type="button" onclick="closeAdminAuthModal()" class="flex-1 py-2 rounded-xl border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50">
+            取消
+          </button>
+          <button type="submit" class="flex-1 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 shadow-sm">
+            驗證並解鎖
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 0-1. Change Admin Password Modal -->
+  <div id="change-password-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-6 border border-slate-200 shadow-2xl animate-fade-in">
+      <div class="w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mx-auto mb-3">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path>
+        </svg>
+      </div>
+      <h3 class="text-lg font-bold text-slate-900 text-center mb-1">變更管理員通行密碼</h3>
+      <p class="text-xs text-slate-500 text-center mb-4 leading-relaxed">
+        設定新的管理員密碼以保護後台管考與 CMS 發布權限。
+      </p>
+
+      <form id="change-password-form" onsubmit="handleChangePasswordSubmit(event)" class="space-y-3">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">目前密碼</label>
+          <input type="password" id="cp-old-password" required placeholder="輸入原通行密碼" class="w-full text-xs px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 font-mono">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">新通行密碼</label>
+          <input type="password" id="cp-new-password" required placeholder="輸入新密碼 (至少4碼)" class="w-full text-xs px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 font-mono">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">確認新密碼</label>
+          <input type="password" id="cp-confirm-password" required placeholder="再次輸入新密碼" class="w-full text-xs px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 font-mono">
+        </div>
+
+        <div class="flex gap-2 pt-2">
+          <button type="button" onclick="closeChangePasswordModal()" class="flex-1 py-2 rounded-xl border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50">
+            取消
+          </button>
+          <button type="submit" class="flex-1 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 shadow-sm">
+            確認變更
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 0-2. Google Sheets Cloud Sync Modal -->
+  <div id="cloud-config-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 border border-slate-200 shadow-2xl animate-fade-in">
+      <div class="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-3">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 00-9.78 2.096A4.001 4.001 0 003 15z"></path>
+        </svg>
+      </div>
+      <h3 class="text-lg font-bold text-slate-900 text-center mb-1">Google 試算表雲端即時同步</h3>
+      <p class="text-xs text-slate-500 text-center mb-4 leading-relaxed">
+        設定 Google Apps Script Web App 網址，全台門市手機送單立刻同步寫入你的 Google 試算表！
+      </p>
+
+      <form id="cloud-config-form" onsubmit="handleCloudConfigSubmit(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Google Apps Script Web App 網址</label>
+          <input type="url" id="cloud-api-url" placeholder="https://script.google.com/macros/s/.../exec" class="w-full text-xs px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 font-mono text-slate-800">
+          <p class="text-[11px] text-slate-400 mt-1 leading-relaxed">留空儲存即切換回「本地離線展示模式」。設定代碼請參考專案 <code class="bg-slate-100 px-1 py-0.5 rounded">backend/google_apps_script.js</code>。</p>
+        </div>
+
+        <div id="cloud-status-banner" class="p-3 rounded-xl border text-xs flex items-center justify-between">
+          <!-- Populated dynamically via JS -->
+        </div>
+
+        <div class="flex gap-2 pt-2">
+          <button type="button" onclick="closeCloudConfigModal()" class="flex-1 py-2 rounded-xl border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50">
+            關閉
+          </button>
+          <button type="submit" class="flex-1 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 shadow-sm">
+            儲存並同步
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 1. Announcement Reading Modal -->
+  <div id="announcement-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-2xl w-full border border-slate-200 shadow-xl overflow-hidden animate-fade-in">
+      <div class="p-6 border-b border-slate-100 flex justify-between items-start gap-4">
+        <div>
+          <h3 id="modal-ann-title" class="text-xl font-bold text-slate-900 mb-2"></h3>
+          <div id="modal-ann-meta" class="flex flex-wrap items-center gap-2 text-xs"></div>
+        </div>
+        <button onclick="closeAnnouncementModal()" class="text-slate-400 hover:text-slate-600 p-1">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+      <div class="p-6 max-h-[70vh] overflow-y-auto">
+        <div id="modal-ann-body" class="text-sm text-slate-700 leading-relaxed space-y-3 font-normal"></div>
+      </div>
+      <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-end">
+        <button onclick="closeAnnouncementModal()" class="px-5 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800">
+          關閉視窗
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Store Wiki Detail Modal -->
+  <div id="wiki-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-2xl w-full border border-slate-200 shadow-xl overflow-hidden animate-fade-in">
+      <div class="p-6 border-b border-slate-100 bg-slate-900 text-white flex justify-between items-start gap-4">
+        <div>
+          <div class="flex items-center gap-2 mb-2">
+            <span id="modal-wiki-id" class="font-mono text-xs text-cyan-300 font-bold">#W042</span>
+            <div id="modal-wiki-category"></div>
+          </div>
+          <h3 id="modal-wiki-title" class="text-lg md:text-xl font-bold"></h3>
+          <div class="text-xs text-slate-300 mt-1">
+            適用鞋款：<span id="modal-wiki-shoe" class="text-cyan-300 font-medium"></span>
+          </div>
+        </div>
+        <button onclick="closeWikiModal()" class="text-slate-400 hover:text-white p-1">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+
+      <div class="p-6 max-h-[65vh] overflow-y-auto space-y-4 text-xs">
+        <div class="p-3 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-between">
+          <span class="text-amber-800 font-bold">★ 責任處理人：</span>
+          <div id="modal-wiki-processor" class="text-amber-900 text-right"></div>
+        </div>
+
+        <div>
+          <span class="font-bold text-slate-900 text-sm block mb-1">【客訴問題現象】</span>
+          <p id="modal-wiki-symptom" class="p-3 bg-slate-50 rounded-xl border border-slate-200 text-slate-700 leading-relaxed"></p>
+        </div>
+
+        <div>
+          <span class="font-bold text-slate-900 text-sm block mb-1">【原因剖析與技術診斷】</span>
+          <p id="modal-wiki-rootcause" class="p-3 bg-slate-50 rounded-xl border border-slate-200 text-slate-700 leading-relaxed"></p>
+        </div>
+
+        <div>
+          <span class="font-bold text-emerald-800 text-sm block mb-1">【標準解決方式與步驟】</span>
+          <div id="modal-wiki-solution" class="p-3.5 bg-emerald-50 rounded-xl border border-emerald-200 text-emerald-950 font-medium leading-relaxed"></div>
+        </div>
+
+        <div>
+          <span class="font-bold text-blue-900 text-sm block mb-1">【門市量測與防範要點】</span>
+          <p id="modal-wiki-prevention" class="p-3 bg-blue-50 rounded-xl border border-blue-200 text-blue-900 leading-relaxed"></p>
+        </div>
+      </div>
+
+      <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-end">
+        <button onclick="closeWikiModal()" class="px-5 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800">
+          完成查閱
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Success Submission Modal -->
+  <div id="submit-success-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 text-center border border-slate-200 shadow-2xl animate-fade-in">
+      <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
+        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+        </svg>
+      </div>
+      <h3 class="text-xl font-bold text-slate-900 mb-1">客訴案件已成功建檔！</h3>
+      <p class="text-xs text-slate-500 mb-4">系統已發出通報至正全義肢製造端與主管管考中心。</p>
+
+      <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-6">
+        <span class="text-xs text-slate-400 block mb-1">您的案件追蹤編號</span>
+        <div id="submitted-case-id" class="font-mono text-xl font-black text-blue-600 select-all"></div>
+      </div>
+
+      <div class="flex gap-2">
+        <button onclick="closeSuccessModal()" class="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50">
+          留在此頁
+        </button>
+        <button onclick="jumpToTrackCase(document.getElementById('submitted-case-id').textContent)" class="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 shadow-sm">
+          前往進度查詢 →
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Admin Case Handling Drawer Modal -->
+  <div id="case-drawer-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex justify-end items-end md:items-stretch hidden">
+    <div class="bg-white w-full max-w-2xl h-[92vh] md:h-full shadow-2xl flex flex-col justify-between overflow-hidden mobile-bottom-sheet animate-fade-in">
+      <!-- Mobile Drag Handle -->
+      <div class="md:hidden w-full pt-2.5 pb-1 bg-slate-900 flex justify-center items-center">
+        <div class="w-10 h-1 rounded-full bg-slate-700"></div>
+      </div>
+      <!-- Drawer Header -->
+      <div class="p-5 md:p-6 bg-slate-900 text-white border-b border-slate-800 flex justify-between items-start gap-4">
+        <div>
+          <div class="flex items-center gap-2 mb-1">
+            <span class="text-xs font-bold px-2 py-0.5 rounded bg-blue-500/20 text-blue-300">客訴處置工單</span>
+            <span id="drawer-case-id" class="font-mono text-base font-bold text-white"></span>
+          </div>
+          <p class="text-xs text-slate-300">
+            門市：<span id="drawer-store-info" class="font-bold text-cyan-300"></span> ｜ 
+            客戶：<span id="drawer-customer-name" class="font-bold text-white"></span> ｜ 
+            單號：<span id="drawer-order-no" class="font-mono text-slate-300"></span>
+          </p>
+        </div>
+        <button onclick="closeCaseDrawer()" class="text-slate-400 hover:text-white p-1">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Drawer Body (Scrollable) -->
+      <div class="p-6 flex-1 overflow-y-auto space-y-6 text-xs">
+        <!-- Section: Customer Original Complaint Review -->
+        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
+          <h4 class="font-bold text-slate-800 text-xs uppercase tracking-wider">【原始主訴與鞋況】</h4>
+          <div class="grid grid-cols-2 gap-2 text-slate-600">
+            <div>鞋款：<b id="drawer-shoe-model" class="text-slate-800"></b></div>
+            <div>穿著時長：<span id="drawer-wear-days"></span></div>
+          </div>
+          <div>
+            <span>痛點標註：</span>
+            <div id="drawer-pain-points" class="inline-flex flex-wrap gap-1 mt-1"></div>
+          </div>
+          <div>
+            <span class="text-slate-500 block">主訴內容：</span>
+            <p id="drawer-customer-notes" class="text-slate-700 bg-white p-2 rounded border border-slate-200 mt-1 leading-relaxed"></p>
+          </div>
+        </div>
+
+        <!-- Section: Technical Handling Inputs -->
+        <div class="space-y-4">
+          <h4 class="font-bold text-blue-900 text-xs uppercase tracking-wider border-b border-blue-100 pb-1">
+            【技術診斷與處置派工】
+          </h4>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">目前處理狀態</label>
+              <select id="drawer-status" class="w-full text-xs p-2 bg-slate-50 border border-slate-200 rounded-lg font-bold">
+                <option value="待受理">待受理</option>
+                <option value="診斷中">診斷中</option>
+                <option value="正全重製中">正全重製中 (工廠急件)</option>
+                <option value="門市微調中">門市微調中 (現場修磨)</option>
+                <option value="待交件">待交件 (物流/門市)</option>
+                <option value="售後追蹤期">售後追蹤期 (D+3/D+14)</option>
+                <option value="已結案">已結案</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">指派責任處理人</label>
+              <select id="drawer-assigned" class="w-full text-xs p-2 bg-slate-50 border border-slate-200 rounded-lg font-bold">
+                <option value="正全義肢鞋墊製造商">正全義肢鞋墊製造商 (工廠端)</option>
+                <option value="專業顧問">專業顧問 (生物力學/調校)</option>
+                <option value="Jason">Jason (主管審定)</option>
+                <option value="門市技師">門市技師 (現場修磨)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">核定處置手段</label>
+              <select id="drawer-action-plan" class="w-full text-xs p-2 bg-slate-50 border border-slate-200 rounded-lg font-medium">
+                <option value="急件免費全新品重製">急件免費全新品重製</option>
+                <option value="現場修磨微調">門市現場修磨微調</option>
+                <option value="回店重測足壓調校">回店重新 3D 取模評估</option>
+                <option value="磨合期衛教引導">磨合期衛教循序穿著</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">重製/修磨工單號</label>
+              <input type="text" id="drawer-work-order" placeholder="例如：WO-REMAKE-0906" class="w-full text-xs p-2 bg-slate-50 border border-slate-200 rounded-lg font-mono">
+            </div>
+          </div>
+
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">處理過程描述 (檢測日誌與原因剖析)</label>
+            <textarea id="drawer-diagnosis-log" rows="3" placeholder="詳細記錄技師比對 3D STL 圖檔結果、責任歸屬與重製參數..." class="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-lg"></textarea>
+          </div>
+        </div>
+
+        <!-- Section: Delivery & Fulfillment -->
+        <div class="space-y-3">
+          <h4 class="font-bold text-purple-900 text-xs uppercase tracking-wider border-b border-purple-100 pb-1">
+            【交件履約與物流登記】
+          </h4>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">交件方式</label>
+              <select id="drawer-delivery-type" class="w-full text-xs p-2 bg-slate-50 border border-slate-200 rounded-lg">
+                <option value="黑貓宅配到府">黑貓宅配到府</option>
+                <option value="預約門市試穿取件">預約門市試穿取件</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">物流單號 / 取件預約</label>
+              <input type="text" id="drawer-tracking-code" placeholder="黑貓單號或預約時間" class="w-full text-xs p-2 bg-slate-50 border border-slate-200 rounded-lg font-mono">
+            </div>
+          </div>
+        </div>
+
+        <!-- Section: Post-Delivery Tracking & Wiki Preservation -->
+        <div class="space-y-3">
+          <h4 class="font-bold text-emerald-900 text-xs uppercase tracking-wider border-b border-emerald-100 pb-1">
+            【D+3 / D+14 售後追蹤與 Wiki 沉澱】
+          </h4>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">D+3 初期試穿回訪日誌</label>
+            <input type="text" id="drawer-d3-log" placeholder="電訪紀錄：是否順利放入鞋內、初穿壓迫感..." class="w-full text-xs p-2 bg-slate-50 border border-slate-200 rounded-lg">
+          </div>
+          <div class="grid grid-cols-3 gap-2">
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">D+14 滿意度星級</label>
+              <select id="drawer-d14-rating" class="w-full text-xs p-2 bg-slate-50 border border-slate-200 rounded-lg font-bold text-amber-600">
+                <option value="5">★★★★★ 5 星極滿意</option>
+                <option value="4">★★★★☆ 4 星滿意</option>
+                <option value="3">★★★☆☆ 3 星尚可</option>
+                <option value="2">★★☆☆☆ 2 星不適二次修整</option>
+              </select>
+            </div>
+            <div class="col-span-2">
+              <label class="block font-bold text-slate-700 mb-1">D+14 滿意度結案回訪說明</label>
+              <input type="text" id="drawer-d14-log" placeholder="結案說明：足底疼痛完全緩解，步態正常..." class="w-full text-xs p-2 bg-slate-50 border border-slate-200 rounded-lg">
+            </div>
+          </div>
+
+          <!-- Save to Wiki Checkbox -->
+          <div class="p-3 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center justify-between mt-2">
+            <div>
+              <span class="font-bold text-emerald-900 block">沉澱收錄至【門市 Wiki 知識庫】</span>
+              <span class="text-[11px] text-emerald-700">勾選後將自動將本案例之成因、處理人與解法轉為門市查閱字典。</span>
+            </div>
+            <input type="checkbox" id="drawer-save-wiki" class="w-5 h-5 rounded text-emerald-600">
+          </div>
+        </div>
+      </div>
+
+      <!-- Drawer Footer -->
+      <div class="p-4 bg-slate-50 border-t border-slate-200 flex justify-between items-center gap-3">
+        <button onclick="printWorkOrder()" class="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-100 flex items-center gap-1.5 transition-colors">
+          <svg class="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+          </svg>
+          <span>列印工單</span>
+        </button>
+
+        <div class="flex gap-2">
+          <button onclick="closeCaseDrawer()" class="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-100">
+            取消
+          </button>
+          <button onclick="saveCaseDrawerUpdates()" class="px-5 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 shadow-sm transition-colors">
+            儲存案件更新
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mobile Fixed Bottom Navigation Dock (Retail Staff Mobile Nav) -->
+  <nav id="mobile-bottom-dock" class="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-lg md:hidden pb-safe">
+    <div class="grid grid-cols-5 h-14">
+      <button data-view-target="announcements" class="mobile-nav-btn flex flex-col items-center justify-center text-[10px] font-bold text-blue-600 transition-all touch-target">
+        <span class="text-base leading-none mb-1">📢</span>
+        <span>公告</span>
+      </button>
+      <button data-view-target="wiki" class="mobile-nav-btn flex flex-col items-center justify-center text-[10px] font-medium text-slate-500 transition-all touch-target">
+        <span class="text-base leading-none mb-1">💡</span>
+        <span>Wiki</span>
+      </button>
+      <button data-view-target="complaint-form" class="mobile-nav-btn flex flex-col items-center justify-center text-[10px] font-medium text-slate-500 transition-all touch-target">
+        <span class="text-base leading-none mb-1">📝</span>
+        <span>客訴</span>
+      </button>
+      <button data-view-target="track-case" class="mobile-nav-btn flex flex-col items-center justify-center text-[10px] font-medium text-slate-500 transition-all touch-target">
+        <span class="text-base leading-none mb-1">🔍</span>
+        <span>進度</span>
+      </button>
+      <button data-view-target="admin-cases" class="mobile-nav-btn flex flex-col items-center justify-center text-[10px] font-medium text-slate-500 transition-all touch-target relative">
+        <span class="text-base leading-none mb-1">⚙️</span>
+        <span class="flex items-center gap-0.5">
+          <span>管考</span>
+          <span id="mobile-admin-dot" class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+        </span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Application JS -->
+  <script src="js/stores_data.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
