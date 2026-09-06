@@ -337,16 +337,44 @@ function initStoreSelector() {
 
   const stores = [...(window.ASO_STORES || [])];
 
-  // Sort stores by code ascending
-  stores.sort((a, b) => (a.code || '').localeCompare(b.code || ''));
+  // 台灣縣市由北到南標準排序順序
+  const regionOrder = [
+    '台北市', '新北市', '基隆市', '桃園市', '新竹市', 
+    '台中市', '彰化縣', '嘉義市', '台南市', '高雄市', '屏東縣'
+  ];
 
-  // Build Intake Form Options (No Optgroups, No 阿瘦, Clean alignment)
-  let selectHtml = '<option value="">-- 請選擇門市 (依店代號排序) --</option>';
-  selectHtml += stores.map(s => {
-    const cleanName = (s.name || '').replace(/^阿瘦\s*/, '');
-    const isSelected = (s.code === '2009') ? 'selected' : '';
-    return `<option value="${s.code}" data-name="${cleanName}" ${isSelected}>${s.code}　${cleanName}</option>`;
-  }).join('');
+  // 依照縣市分組建立門市選單 (含各縣市標籤與間數，對齊店代號與名稱，無阿瘦前綴)
+  let selectHtml = `<option value="">-- 請選擇門市 (依縣市分區 / 全台共${stores.length}間) --</option>`;
+  
+  const usedRegions = new Set();
+  regionOrder.forEach(region => {
+    const regionStores = stores.filter(s => s.region === region).sort((a, b) => (a.code || '').localeCompare(b.code || ''));
+    if (regionStores.length > 0) {
+      usedRegions.add(region);
+      selectHtml += `<optgroup label="📍 ${region} (${regionStores.length}間)">`;
+      selectHtml += regionStores.map(s => {
+        const cleanName = (s.name || '').replace(/^阿瘦\s*/, '');
+        const isSelected = (s.code === '2009') ? 'selected' : '';
+        return `<option value="${s.code}" data-name="${cleanName}" ${isSelected}>${s.code}　${cleanName}</option>`;
+      }).join('');
+      selectHtml += `</optgroup>`;
+    }
+  });
+
+  // 其餘未在預設列表中的區域 (防呆備援)
+  stores.forEach(s => {
+    if (s.region && !usedRegions.has(s.region)) {
+      usedRegions.add(s.region);
+      const otherStores = stores.filter(os => os.region === s.region).sort((a, b) => (a.code || '').localeCompare(b.code || ''));
+      selectHtml += `<optgroup label="📍 ${s.region} (${otherStores.length}間)">`;
+      selectHtml += otherStores.map(os => {
+        const cleanName = (os.name || '').replace(/^阿瘦\s*/, '');
+        return `<option value="${os.code}" data-name="${cleanName}">${os.code}　${cleanName}</option>`;
+      }).join('');
+      selectHtml += `</optgroup>`;
+    }
+  });
+
   storeSelect.innerHTML = selectHtml;
 
   // Set default initial values
@@ -366,14 +394,21 @@ function initStoreSelector() {
     }
   });
 
-  // Populate Admin Store Filter (Flat list, No Optgroups, No 阿瘦, Aligned)
+  // Populate Admin Store Filter (依縣市分組，便於主管跨店篩選)
   const adminStoreFilter = document.getElementById('admin-store-filter');
   if (adminStoreFilter) {
     let filterHtml = `<option value="all">全部門市 (共${stores.length}間)</option>`;
-    filterHtml += stores.map(s => {
-      const cleanName = (s.name || '').replace(/^阿瘦\s*/, '');
-      return `<option value="${s.code}">${s.code}　${cleanName}</option>`;
-    }).join('');
+    regionOrder.forEach(region => {
+      const regionStores = stores.filter(s => s.region === region).sort((a, b) => (a.code || '').localeCompare(b.code || ''));
+      if (regionStores.length > 0) {
+        filterHtml += `<optgroup label="📍 ${region} (${regionStores.length}間)">`;
+        filterHtml += regionStores.map(s => {
+          const cleanName = (s.name || '').replace(/^阿瘦\s*/, '');
+          return `<option value="${s.code}">${s.code}　${cleanName}</option>`;
+        }).join('');
+        filterHtml += `</optgroup>`;
+      }
+    });
     adminStoreFilter.innerHTML = filterHtml;
     adminStoreFilter.addEventListener('change', renderAdminCases);
   }

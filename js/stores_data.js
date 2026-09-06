@@ -2,17 +2,6 @@
 // 資料來源：研發部工作週報20260828 × 全國門市專櫃分區表 (2025/05/05)
 window.ASO_STORES = [
   {
-    "code": "2006",
-    "alphaCode": "M",
-    "dept": "營業三部",
-    "shortName": "西門",
-    "name": "西門門市",
-    "manager": "徐婉庭",
-    "phone": "02-23312757",
-    "address": "台北市萬華區峨嵋街38號1樓",
-    "region": "台北市"
-  },
-  {
     "code": "2007",
     "alphaCode": "N",
     "dept": "營業一部",
@@ -308,6 +297,17 @@ window.ASO_STORES = [
     "phone": "03-3561780",
     "address": "桃園市桃園區中正路1202號",
     "region": "桃園市"
+  },
+  {
+    "code": "2350",
+    "alphaCode": "JG",
+    "dept": "營業二部",
+    "shortName": "江子翠",
+    "name": "江子翠門市",
+    "manager": "沈淳雅",
+    "phone": "02-22504166",
+    "address": "新北市板橋區雙十路二段148號1樓",
+    "region": "新北市"
   },
   {
     "code": "2358",
