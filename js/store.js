@@ -276,7 +276,7 @@ class Store {
   }
 
   getAdminPassword() {
-    return localStorage.getItem(STORAGE_KEYS.ADMIN_PASS) || '8888';
+    return localStorage.getItem(STORAGE_KEYS.ADMIN_PASS) || 'Aso#Nature2026';
   }
 
   setAdminPassword(newPass) {
