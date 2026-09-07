@@ -179,6 +179,35 @@ const SEED_COMPLAINTS = [
     updatedAt: '2026-09-05 09:30'
   },
   {
+    id: 'CMP-20260903-0062',
+    storeCode: '2350',
+    storeName: '江子翠門市',
+    customerName: '謝志偉',
+    phone: '0918-776-554',
+    email: 'chihwei.hsieh@example.com',
+    orderNo: 'ORD-2026-9011',
+    category: '穿著不適',
+    priority: '急件',
+    shoeModel: 'New Balance 990v6',
+    shoeSize: 'US 9.5 4E',
+    wearDays: '穿著 1~3 天',
+    painPoints: ['大拇趾蹠骨疼痛', '前掌邊緣溢出'],
+    customerNotes: '江子翠門市驗配，客人右腳大拇指第1蹠骨頭下壓痛，且寬楦版型邊緣稍有擠壓感。',
+    status: '待交件',
+    assignedTo: '專業顧問',
+    diagnosisLog: '2026-09-03 顧問診斷：第1蹠骨頭需挖空 2mm 卸壓，並於邊緣做 45 度倒角打薄。門市技師已完成現場修整。',
+    actionPlan: '現場修磨微調',
+    workOrderNo: 'WO-MOD-0903-J',
+    deliveryType: '預約門市試穿取件',
+    trackingCode: '江子翠門市備妥待領 (9/4 通知)',
+    d3Log: '',
+    d14Rating: 0,
+    d14Log: '',
+    isSavedToWiki: true,
+    createdAt: '2026-09-03 14:00',
+    updatedAt: '2026-09-04 11:20'
+  },
+  {
     id: 'CMP-20260901-0045',
     storeCode: '2178',
     storeName: '大墩門市',
@@ -235,6 +264,35 @@ const SEED_COMPLAINTS = [
     isSavedToWiki: true,
     createdAt: '2026-08-26 09:15',
     updatedAt: '2026-09-05 16:00'
+  },
+  {
+    id: 'CMP-20260822-0011',
+    storeCode: '2031',
+    storeName: '嘉義中山門市',
+    customerName: '柯先生',
+    phone: '0970-123-987',
+    email: 'ko.c@example.com',
+    orderNo: 'ORD-2026-8319',
+    category: '尺寸不符',
+    priority: '一般',
+    shoeModel: 'Mizuno Wave Rider 27',
+    shoeSize: '27.5 cm',
+    wearDays: '穿著 1~3 天',
+    painPoints: ['後跟杯鬆脫不穩'],
+    customerNotes: '後跟杯側壁偏軟，走路時腳跟有點向外滑動，缺乏包覆安定感。',
+    status: '已結案',
+    assignedTo: '正全義肢鞋墊製造商',
+    diagnosisLog: '正全工廠以熱風槍加熱後跟深杯包覆側壁向內收縮 2mm，提升跟骨鎖定效果。',
+    actionPlan: '現場修磨微調',
+    workOrderNo: 'WO-HEEL-0822',
+    deliveryType: '黑貓宅配到府',
+    trackingCode: '黑貓 9033-1122-8877',
+    d3Log: '8/25 初訪：後跟包覆感明顯改善。',
+    d14Rating: 5,
+    d14Log: '9/03 滿意結案。',
+    isSavedToWiki: false,
+    createdAt: '2026-08-22 10:00',
+    updatedAt: '2026-09-03 14:00'
   }
 ];
 
@@ -479,6 +537,134 @@ class Store {
       return list[idx];
     }
     return null;
+  }
+
+  batchUpdateComplaints(ids, updates) {
+    if (!Array.isArray(ids) || ids.length === 0) return [];
+    const list = this.getComplaints();
+    const nowStr = new Date().toLocaleString('zh-TW', { hour12: false });
+    const idSet = new Set(ids);
+    const updatedItems = [];
+
+    list.forEach(c => {
+      if (idSet.has(c.id)) {
+        Object.assign(c, updates, { updatedAt: nowStr });
+        updatedItems.push(c);
+      }
+    });
+
+    localStorage.setItem(STORAGE_KEYS.COMPLAINTS, JSON.stringify(list));
+
+    // Async push to Google Sheets
+    const gasUrl = this.getGasUrl();
+    if (gasUrl) {
+      fetch(gasUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'batchUpdateComplaints', ids, updates })
+      }).catch(err => console.warn('Cloud batch update error:', err));
+    }
+
+    return updatedItems;
+  }
+
+  getFollowUpStatus(c) {
+    if (!c) return { isD3Due: false, isD14Due: false, isOverdue: false, days: 0 };
+    const createTime = new Date(c.createdAt ? c.createdAt.replace(/-/g, '/') : Date.now()).getTime();
+    const days = Math.max(0, Math.floor((Date.now() - createTime) / (1000 * 3600 * 24)));
+    
+    const isClosed = (c.status === '已結案');
+    const isD3Due = !isClosed && days >= 3 && (!c.d3Log || c.d3Log.trim() === '');
+    const isD14Due = !isClosed && days >= 14 && (!c.d14Rating || Number(c.d14Rating) === 0);
+    const isOverdue = !isClosed && days >= 14;
+
+    return { isD3Due, isD14Due, isOverdue, days };
+  }
+
+  getComplaintStats() {
+    const list = this.getComplaints();
+    const total = list.length;
+    
+    // Store distribution
+    const storeMap = {};
+    // Category distribution
+    const categoryMap = { '鞋墊做錯': 0, '尺寸不符': 0, '穿著不適': 0, '其他': 0 };
+    // Processor distribution
+    const processorMap = { '正全義肢鞋墊製造商': 0, '專業顧問': 0, 'Jason': 0, '門市技師': 0, '未指派': 0 };
+    // Pain points
+    const painMap = {};
+    // Shoe brands
+    const shoeMap = {};
+
+    let d3DueCount = 0;
+    let d14DueCount = 0;
+    let overdueCount = 0;
+    let totalRating = 0;
+    let ratedCount = 0;
+
+    list.forEach(c => {
+      // Store
+      const storeKey = `${c.storeCode || '未知'} ${c.storeName || '門市'}`;
+      storeMap[storeKey] = (storeMap[storeKey] || 0) + 1;
+
+      // Category
+      if (categoryMap.hasOwnProperty(c.category)) {
+        categoryMap[c.category]++;
+      } else {
+        categoryMap['其他']++;
+      }
+
+      // Processor
+      const proc = c.assignedTo || '未指派';
+      if (proc.includes('正全')) processorMap['正全義肢鞋墊製造商']++;
+      else if (proc.includes('顧問')) processorMap['專業顧問']++;
+      else if (proc.includes('Jason')) processorMap['Jason']++;
+      else if (proc.includes('門市')) processorMap['門市技師']++;
+      else processorMap['未指派']++;
+
+      // Pain Points
+      if (Array.isArray(c.painPoints)) {
+        c.painPoints.forEach(p => {
+          painMap[p] = (painMap[p] || 0) + 1;
+        });
+      }
+
+      // Shoe Models
+      if (c.shoeModel) {
+        const brandMatch = c.shoeModel.match(/ASICS|HOKA|Nike|New Balance|NB|Ecco|Mizuno|Adidas|Brooks|Skechers|皮鞋/i);
+        const brand = brandMatch ? brandMatch[0].toUpperCase() : '其他品牌';
+        shoeMap[brand] = (shoeMap[brand] || 0) + 1;
+      }
+
+      // Follow-up status
+      const fu = this.getFollowUpStatus(c);
+      if (fu.isD3Due) d3DueCount++;
+      if (fu.isD14Due) d14DueCount++;
+      if (fu.isOverdue) overdueCount++;
+
+      // Rating
+      if (c.d14Rating && Number(c.d14Rating) > 0) {
+        totalRating += Number(c.d14Rating);
+        ratedCount++;
+      }
+    });
+
+    const storeRankings = Object.entries(storeMap)
+      .map(([name, count]) => ({ name, count, percent: total > 0 ? Math.round((count / total) * 100) : 0 }))
+      .sort((a, b) => b.count - a.count);
+
+    return {
+      total,
+      storeRankings,
+      categories: categoryMap,
+      processors: processorMap,
+      painPoints: Object.entries(painMap).sort((a, b) => b[1] - a[1]).slice(0, 6),
+      shoeBrands: Object.entries(shoeMap).sort((a, b) => b[1] - a[1]).slice(0, 5),
+      d3DueCount,
+      d14DueCount,
+      overdueCount,
+      avgRating: ratedCount > 0 ? (totalRating / ratedCount).toFixed(1) : '5.0'
+    };
   }
 
   deleteComplaint(id) {

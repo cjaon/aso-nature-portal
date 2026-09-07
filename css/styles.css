@@ -73,6 +73,63 @@ body {
   box-shadow: 0 1px 3px rgba(239, 68, 68, 0.2);
 }
 
+/* Photo Annotation Canvas Styles */
+.annotation-canvas-container {
+  position: relative;
+  touch-action: none;
+  background-color: #0f172a;
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 280px;
+}
+
+#annotation-canvas {
+  touch-action: none;
+  cursor: crosshair;
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+}
+
+.canvas-tool-btn.active {
+  background-color: #2563eb !important;
+  color: #ffffff !important;
+  border-color: #3b82f6 !important;
+}
+
+/* Analytics Chart Components */
+.chart-bar-fill {
+  transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.donut-segment {
+  transition: stroke-dasharray 0.8s ease, stroke-dashoffset 0.8s ease;
+}
+
+/* Floating Batch Actions Toolbar */
+#batch-actions-toolbar {
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
+}
+
+#batch-actions-toolbar.hidden {
+  transform: translateY(100%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Pulse badge for D+3 / D+14 follow-up alerts */
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.pulse-badge {
+  animation: pulse-subtle 2s infinite ease-in-out;
+}
+
 /* Animation utilities */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(6px); }
@@ -92,7 +149,7 @@ body {
     margin: 0 !important;
   }
 
-  nav, header, .no-print, #toast-container, .print-hide, .app-nav {
+  nav, header, .no-print, #toast-container, .print-hide, .app-nav, #batch-actions-toolbar {
     display: none !important;
   }
 

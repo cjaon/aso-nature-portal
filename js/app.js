@@ -1,14 +1,221 @@
 /**
  * Footwear Complaints & Store Wiki Application Logic
- * Integrated with ASO Brand, Store Codes & Admin Password Security
+ * Integrated with ASO Brand, 30 Store Codes, QR Code Generator, Photo Annotation, Analytics & Admin Security
  */
 
 let pendingAdminTargetView = null;
+let currentAdminSubView = 'list';
+let selectedBatchCaseIds = new Set();
+
+// --- Embedded Robust Offline QR Code Generator (Byte mode & Error Correction Level L/M) ---
+const QRCodeGenerator = (() => {
+  const GF256_EXP = new Uint8Array(512);
+  const GF256_LOG = new Uint8Array(256);
+  let x = 1;
+  for (let i = 0; i < 255; i++) {
+    GF256_EXP[i] = x;
+    GF256_EXP[i + 255] = x;
+    GF256_LOG[x] = i;
+    x = (x << 1) ^ (x >= 128 ? 0x11d : 0);
+  }
+
+  function gfMul(a, b) {
+    return a === 0 || b === 0 ? 0 : GF256_EXP[GF256_LOG[a] + GF256_LOG[b]];
+  }
+
+  function rsGenPoly(n) {
+    let poly = [1];
+    for (let i = 0; i < n; i++) {
+      const next = new Array(poly.length + 1).fill(0);
+      for (let j = 0; j < poly.length; j++) {
+        next[j] ^= gfMul(poly[j], GF256_EXP[i]);
+        next[j + 1] ^= poly[j];
+      }
+      poly = next;
+    }
+    return poly;
+  }
+
+  function rsEncode(data, ecLen) {
+    const poly = rsGenPoly(ecLen);
+    const res = new Array(data.length + ecLen).fill(0);
+    for (let i = 0; i < data.length; i++) res[i] = data[i];
+    for (let i = 0; i < data.length; i++) {
+      const coef = res[i];
+      if (coef !== 0) {
+        for (let j = 0; j < poly.length; j++) {
+          res[i + j] ^= gfMul(poly[j], coef);
+        }
+      }
+    }
+    return res.slice(data.length);
+  }
+
+  // Generate QR Code SVG string for any input text
+  function generateSVG(text, size = 130) {
+    const utf8 = new TextEncoder().encode(text);
+    // Use Version 3 or 4 depending on length
+    let version = 3;
+    let dataCap = 44; // V3-M
+    let ecCount = 26;
+    let totalCodewords = 70;
+    if (utf8.length > 32) {
+      version = 4;
+      dataCap = 64; // V4-M
+      ecCount = 36;
+      totalCodewords = 100;
+    }
+    if (utf8.length > 50) {
+      version = 5;
+      dataCap = 86; // V5-M
+      ecCount = 48;
+      totalCodewords = 134;
+    }
+
+    const modCount = version * 4 + 17;
+    const matrix = Array.from({ length: modCount }, () => Array(modCount).fill(null));
+    const reserved = Array.from({ length: modCount }, () => Array(modCount).fill(false));
+
+    // Finder patterns
+    function addFinder(r, c) {
+      for (let i = -1; i <= 7; i++) {
+        for (let j = -1; j <= 7; j++) {
+          const row = r + i, col = c + j;
+          if (row < 0 || row >= modCount || col < 0 || col >= modCount) continue;
+          reserved[row][col] = true;
+          if ((i >= 0 && i <= 6 && (j === 0 || j === 6)) ||
+              (j >= 0 && j <= 6 && (i === 0 || i === 6)) ||
+              (i >= 2 && i <= 4 && j >= 2 && j <= 4)) {
+            matrix[row][col] = true;
+          } else {
+            matrix[row][col] = false;
+          }
+        }
+      }
+    }
+
+    addFinder(0, 0);
+    addFinder(0, modCount - 7);
+    addFinder(modCount - 7, 0);
+
+    // Timing patterns
+    for (let i = 8; i < modCount - 8; i++) {
+      const val = (i % 2 === 0);
+      if (!reserved[6][i]) { matrix[6][i] = val; reserved[6][i] = true; }
+      if (!reserved[i][6]) { matrix[i][6] = val; reserved[i][6] = true; }
+    }
+
+    // Alignment patterns (for V2+)
+    const alignPos = version === 3 ? [6, 22] : (version === 4 ? [6, 26] : [6, 30]);
+    for (const r of alignPos) {
+      for (const c of alignPos) {
+        if (reserved[r][c]) continue;
+        for (let i = -2; i <= 2; i++) {
+          for (let j = -2; j <= 2; j++) {
+            reserved[r + i][c + j] = true;
+            matrix[r + i][c + j] = (Math.max(Math.abs(i), Math.abs(j)) !== 1);
+          }
+        }
+      }
+    }
+
+    // Reserve format bits
+    for (let i = 0; i < 9; i++) {
+      if (i < modCount) { reserved[8][i] = true; reserved[i][8] = true; }
+      if (modCount - 1 - i >= 0) { reserved[8][modCount - 1 - i] = true; reserved[modCount - 1 - i][8] = true; }
+    }
+
+    // Bitstream assembly
+    let bits = '0100'; // Byte mode
+    const lenBits = (version <= 9 ? 8 : 16);
+    bits += utf8.length.toString(2).padStart(lenBits, '0');
+    for (const b of utf8) {
+      bits += b.toString(2).padStart(8, '0');
+    }
+    // Terminator
+    const dataBitCap = dataCap * 8;
+    if (bits.length < dataBitCap) bits += '0'.repeat(Math.min(4, dataBitCap - bits.length));
+    while (bits.length % 8 !== 0) bits += '0';
+    const padBytes = [0xEC, 0x11];
+    let padIdx = 0;
+    while (bits.length < dataBitCap) {
+      bits += padBytes[padIdx % 2].toString(2).padStart(8, '0');
+      padIdx++;
+    }
+
+    const dataCodewords = [];
+    for (let i = 0; i < bits.length; i += 8) {
+      dataCodewords.push(parseInt(bits.slice(i, i + 8), 2));
+    }
+
+    const ecCodewords = rsEncode(dataCodewords, totalCodewords - dataCodewords.length);
+    const allCodewords = dataCodewords.concat(ecCodewords);
+
+    // Place data in matrix
+    let allBits = '';
+    for (const c of allCodewords) allBits += c.toString(2).padStart(8, '0');
+
+    let bitIdx = 0;
+    let right = modCount - 1;
+    let upward = true;
+
+    while (right > 0) {
+      if (right === 6) right--; // Skip vertical timing column
+      for (let v = 0; v < modCount; v++) {
+        const row = upward ? (modCount - 1 - v) : v;
+        for (let col = right; col >= right - 1; col--) {
+          if (!reserved[row][col]) {
+            let bit = (bitIdx < allBits.length) ? (allBits[bitIdx] === '1') : false;
+            bitIdx++;
+            // Mask pattern 0: (row + col) % 2 === 0
+            if ((row + col) % 2 === 0) bit = !bit;
+            matrix[row][col] = bit;
+          }
+        }
+      }
+      upward = !upward;
+      right -= 2;
+    }
+
+    // Format bits for Mask 0, Level M (0x5412)
+    const formatBits = '101010000010010';
+    let fIdx = 0;
+    for (let i = 0; i <= 8; i++) {
+      if (i === 6) continue;
+      matrix[8][i] = (formatBits[fIdx++] === '1');
+    }
+    for (let i = 7; i >= 0; i--) {
+      if (i === 6) continue;
+      matrix[i][8] = (formatBits[fIdx++] === '1');
+    }
+
+    // Build SVG path
+    let pathD = '';
+    for (let r = 0; r < modCount; r++) {
+      for (let c = 0; c < modCount; c++) {
+        if (matrix[r][c]) {
+          pathD += `M${c + 2},${r + 2}h1v1h-1z `;
+        }
+      }
+    }
+
+    const totalDim = modCount + 4;
+    return `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${totalDim} ${totalDim}" width="${size}" height="${size}" class="rounded shadow-xs">
+        <rect width="${totalDim}" height="${totalDim}" fill="#ffffff" rx="2" />
+        <path d="${pathD}" fill="#0f172a" />
+      </svg>
+    `;
+  }
+
+  return { generateSVG };
+})();
 
 document.addEventListener('DOMContentLoaded', () => {
   initNavigation();
   initStoreSelector();
   initFootPainSelector();
+  initPhotoAnnotation();
   initComplaintForm();
   initCaseTracker();
   initAdminDashboard();
@@ -17,12 +224,25 @@ document.addEventListener('DOMContentLoaded', () => {
   renderAnnouncements();
   renderWikiList();
 
+  // URL Parameter Case Auto-Routing (?case=CMP-2026...)
+  const urlParams = new URLSearchParams(window.location.search);
+  const targetCase = urlParams.get('case');
+  if (targetCase) {
+    switchView('track-case');
+    const input = document.getElementById('track-search-input');
+    if (input) {
+      input.value = targetCase;
+      executeTrackSearch();
+    }
+  }
+
   // Cloud Sync Listener & Background Sync
   window.addEventListener('aso:cloud-synced', () => {
     renderAnnouncements();
     renderWikiList();
     renderAdminCases();
     renderCmsAnnouncements();
+    if (currentAdminSubView === 'analytics') renderAnalyticsDashboard();
   });
 
   if (window.footwearStore.isCloudConnected()) {
@@ -681,7 +901,244 @@ function closeWikiModal() {
   document.getElementById('wiki-modal').classList.add('hidden');
 }
 
-// --- 3. Foot Pain Selector & Complaint Submission ---
+// --- Photo Annotation Canvas Controller ---
+let annotationCanvas = null;
+let annotationCtx = null;
+let annotationBaseImg = null;
+let annotationHistory = [];
+let currentTool = 'circle'; // 'circle', 'arrow', 'pen'
+let currentColor = '#ef4444';
+let isDrawing = false;
+let startX = 0;
+let startY = 0;
+let tempCanvasState = null;
+
+function initPhotoAnnotation() {
+  annotationCanvas = document.getElementById('annotation-canvas');
+  if (!annotationCanvas) return;
+  annotationCtx = annotationCanvas.getContext('2d');
+
+  // Mouse event listeners
+  annotationCanvas.addEventListener('mousedown', (e) => {
+    const rect = annotationCanvas.getBoundingClientRect();
+    const scaleX = annotationCanvas.width / rect.width;
+    const scaleY = annotationCanvas.height / rect.height;
+    startAnnotationDraw((e.clientX - rect.left) * scaleX, (e.clientY - rect.top) * scaleY);
+  });
+
+  annotationCanvas.addEventListener('mousemove', (e) => {
+    if (!isDrawing) return;
+    const rect = annotationCanvas.getBoundingClientRect();
+    const scaleX = annotationCanvas.width / rect.width;
+    const scaleY = annotationCanvas.height / rect.height;
+    onAnnotationDraw((e.clientX - rect.left) * scaleX, (e.clientY - rect.top) * scaleY);
+  });
+
+  annotationCanvas.addEventListener('mouseup', endAnnotationDraw);
+  annotationCanvas.addEventListener('mouseleave', endAnnotationDraw);
+
+  // Touch event listeners for Mobile Phones & iPads
+  annotationCanvas.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    const rect = annotationCanvas.getBoundingClientRect();
+    const scaleX = annotationCanvas.width / rect.width;
+    const scaleY = annotationCanvas.height / rect.height;
+    startAnnotationDraw((touch.clientX - rect.left) * scaleX, (touch.clientY - rect.top) * scaleY);
+  }, { passive: false });
+
+  annotationCanvas.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    if (!isDrawing) return;
+    const touch = e.touches[0];
+    const rect = annotationCanvas.getBoundingClientRect();
+    const scaleX = annotationCanvas.width / rect.width;
+    const scaleY = annotationCanvas.height / rect.height;
+    onAnnotationDraw((touch.clientX - rect.left) * scaleX, (touch.clientY - rect.top) * scaleY);
+  }, { passive: false });
+
+  annotationCanvas.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    endAnnotationDraw();
+  }, { passive: false });
+}
+
+function handlePhotoSelect(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      annotationBaseImg = img;
+      openAnnotationModal();
+      loadBaseImageToCanvas(img);
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function loadBaseImageToCanvas(img) {
+  if (!annotationCanvas || !annotationCtx) return;
+  
+  // Constrain max canvas size
+  const maxDim = 800;
+  let w = img.naturalWidth || img.width;
+  let h = img.naturalHeight || img.height;
+
+  if (w > maxDim || h > maxDim) {
+    if (w > h) {
+      h = Math.round((h * maxDim) / w);
+      w = maxDim;
+    } else {
+      w = Math.round((w * maxDim) / h);
+      h = maxDim;
+    }
+  }
+
+  annotationCanvas.width = w;
+  annotationCanvas.height = h;
+
+  annotationCtx.clearRect(0, 0, w, h);
+  annotationCtx.drawImage(img, 0, 0, w, h);
+
+  annotationHistory = [annotationCtx.getImageData(0, 0, w, h)];
+}
+
+function openAnnotationModal() {
+  document.getElementById('photo-annotation-modal')?.classList.remove('hidden');
+}
+
+function closeAnnotationModal() {
+  document.getElementById('photo-annotation-modal')?.classList.add('hidden');
+}
+
+function setAnnotationTool(tool) {
+  currentTool = tool;
+  document.querySelectorAll('.canvas-tool-btn').forEach(btn => btn.classList.remove('active'));
+  if (tool === 'circle') document.getElementById('tool-circle-btn')?.classList.add('active');
+  if (tool === 'arrow') document.getElementById('tool-arrow-btn')?.classList.add('active');
+  if (tool === 'pen') document.getElementById('tool-pen-btn')?.classList.add('active');
+}
+
+function setAnnotationColor(color) {
+  currentColor = color;
+}
+
+function startAnnotationDraw(x, y) {
+  if (!annotationCtx) return;
+  isDrawing = true;
+  startX = x;
+  startY = y;
+  tempCanvasState = annotationCtx.getImageData(0, 0, annotationCanvas.width, annotationCanvas.height);
+
+  if (currentTool === 'pen') {
+    annotationCtx.beginPath();
+    annotationCtx.moveTo(startX, startY);
+  }
+}
+
+function onAnnotationDraw(x, y) {
+  if (!isDrawing || !annotationCtx) return;
+
+  if (currentTool === 'pen') {
+    annotationCtx.strokeStyle = currentColor;
+    annotationCtx.lineWidth = 4;
+    annotationCtx.lineCap = 'round';
+    annotationCtx.lineJoin = 'round';
+    annotationCtx.lineTo(x, y);
+    annotationCtx.stroke();
+  } else {
+    // Restore base state before drawing drag preview
+    if (tempCanvasState) {
+      annotationCtx.putImageData(tempCanvasState, 0, 0);
+    }
+
+    annotationCtx.strokeStyle = currentColor;
+    annotationCtx.fillStyle = currentColor;
+    annotationCtx.lineWidth = 3.5;
+
+    if (currentTool === 'circle') {
+      const radiusX = Math.abs(x - startX) / 2;
+      const radiusY = Math.abs(y - startY) / 2;
+      const centerX = Math.min(startX, x) + radiusX;
+      const centerY = Math.min(startY, y) + radiusY;
+
+      annotationCtx.beginPath();
+      annotationCtx.ellipse(centerX, centerY, Math.max(radiusX, 8), Math.max(radiusY, 8), 0, 0, Math.PI * 2);
+      annotationCtx.stroke();
+    } else if (currentTool === 'arrow') {
+      drawArrowOnCanvas(annotationCtx, startX, startY, x, y, currentColor);
+    }
+  }
+}
+
+function endAnnotationDraw() {
+  if (!isDrawing || !annotationCtx) return;
+  isDrawing = false;
+  // Save current step to history
+  annotationHistory.push(annotationCtx.getImageData(0, 0, annotationCanvas.width, annotationCanvas.height));
+}
+
+function drawArrowOnCanvas(ctx, fromx, fromy, tox, toy, color) {
+  const headlen = 16;
+  const angle = Math.atan2(toy - fromy, tox - fromx);
+
+  ctx.beginPath();
+  ctx.moveTo(fromx, fromy);
+  ctx.lineTo(tox, toy);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 4;
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(tox, toy);
+  ctx.lineTo(tox - headlen * Math.cos(angle - Math.PI / 6), toy - headlen * Math.sin(angle - Math.PI / 6));
+  ctx.lineTo(tox - headlen * Math.cos(angle + Math.PI / 6), toy - headlen * Math.sin(angle + Math.PI / 6));
+  ctx.closePath();
+  ctx.fillStyle = color;
+  ctx.fill();
+}
+
+function undoAnnotation() {
+  if (!annotationCtx || annotationHistory.length <= 1) return;
+  annotationHistory.pop();
+  const prevState = annotationHistory[annotationHistory.length - 1];
+  annotationCtx.putImageData(prevState, 0, 0);
+}
+
+function clearAnnotationCanvas() {
+  if (!annotationBaseImg) return;
+  loadBaseImageToCanvas(annotationBaseImg);
+}
+
+function saveAnnotationAndApply() {
+  if (!annotationCanvas) return;
+  const dataUrl = annotationCanvas.toDataURL('image/jpeg', 0.82);
+
+  document.getElementById('complaint-annotated-photo').value = dataUrl;
+  const thumbImg = document.getElementById('photo-thumbnail-img');
+  if (thumbImg) thumbImg.src = dataUrl;
+
+  document.getElementById('photo-upload-dropzone')?.classList.add('hidden');
+  document.getElementById('photo-preview-container')?.classList.remove('hidden');
+
+  closeAnnotationModal();
+  showToast('照片痛點標註已完成並附入表單！', 'success');
+}
+
+function removePhoto() {
+  document.getElementById('complaint-photo-input').value = '';
+  document.getElementById('complaint-annotated-photo').value = '';
+  document.getElementById('photo-upload-dropzone')?.classList.remove('hidden');
+  document.getElementById('photo-preview-container')?.classList.add('hidden');
+  annotationBaseImg = null;
+  annotationHistory = [];
+}
+
+// --- 3. Complaint Form & Foot Pain Selector ---
 let selectedPainPoints = [];
 
 function initFootPainSelector() {
@@ -776,6 +1233,7 @@ function initComplaintForm() {
     const shoeSize = document.getElementById('complaint-size').value.trim();
     const wearDays = document.getElementById('complaint-days').value;
     const customerNotes = document.getElementById('complaint-notes').value.trim();
+    const photoUrl = document.getElementById('complaint-annotated-photo')?.value || '';
 
     if (!customerName || !phone || !orderNo || !category || !customerNotes) {
       showToast('請完整填寫必填欄位與事由描述！', 'error');
@@ -810,6 +1268,7 @@ function initComplaintForm() {
       wearDays,
       painPoints: [...selectedPainPoints],
       customerNotes,
+      photoUrl,
       assignedTo: defaultAssigned,
       actionPlan: defaultAction
     });
@@ -820,6 +1279,14 @@ function initComplaintForm() {
     document.querySelectorAll('.hotspot-chip').forEach(c => c.classList.remove('selected'));
     updatePainPointDisplay();
     updateWikiSuggestions();
+    removePhoto();
+
+    // Render QR Code in Success Modal
+    const trackUrl = `${window.location.origin}${window.location.pathname}?case=${newCase.id}`;
+    const qrContainer = document.getElementById('submitted-qr-container');
+    if (qrContainer) {
+      qrContainer.innerHTML = QRCodeGenerator.generateSVG(trackUrl, 120);
+    }
 
     // Show Success Modal with Case ID
     document.getElementById('submitted-case-id').textContent = newCase.id;
@@ -953,18 +1420,50 @@ function initAdminDashboard() {
   document.getElementById('admin-assigned-filter')?.addEventListener('change', renderAdminCases);
 }
 
+function switchAdminSubView(view) {
+  currentAdminSubView = view;
+  const listBtn = document.getElementById('admin-subview-list-btn');
+  const anaBtn = document.getElementById('admin-subview-analytics-btn');
+  const listView = document.getElementById('admin-cases-list-view');
+  const anaView = document.getElementById('admin-cases-analytics-view');
+
+  if (view === 'analytics') {
+    listView?.classList.add('hidden');
+    anaView?.classList.remove('hidden');
+    anaBtn?.classList.add('bg-white', 'text-slate-900', 'shadow-xs', 'font-bold');
+    anaBtn?.classList.remove('text-slate-600');
+    listBtn?.classList.remove('bg-white', 'text-slate-900', 'shadow-xs', 'font-bold');
+    listBtn?.classList.add('text-slate-600');
+    renderAnalyticsDashboard();
+  } else {
+    listView?.classList.remove('hidden');
+    anaView?.classList.add('hidden');
+    listBtn?.classList.add('bg-white', 'text-slate-900', 'shadow-xs', 'font-bold');
+    listBtn?.classList.remove('text-slate-600');
+    anaBtn?.classList.remove('bg-white', 'text-slate-900', 'shadow-xs', 'font-bold');
+    anaBtn?.classList.add('text-slate-600');
+    renderAdminCases();
+  }
+}
+
 function renderAdminCases() {
   const list = window.footwearStore.getComplaints();
   updateAdminMetrics(list);
 
   let filtered = [...list];
-  if (currentAdminStatus !== 'all') {
+
+  // Follow-up status filters
+  if (currentAdminStatus === 'd3_due') {
+    filtered = filtered.filter(c => window.footwearStore.getFollowUpStatus(c).isD3Due);
+  } else if (currentAdminStatus === 'd14_due') {
+    filtered = filtered.filter(c => window.footwearStore.getFollowUpStatus(c).isD14Due);
+  } else if (currentAdminStatus !== 'all') {
     filtered = filtered.filter(c => c.status === currentAdminStatus);
   }
 
   const assignedFilter = document.getElementById('admin-assigned-filter')?.value;
   if (assignedFilter && assignedFilter !== 'all') {
-    filtered = filtered.filter(c => c.assignedTo.includes(assignedFilter));
+    filtered = filtered.filter(c => c.assignedTo && c.assignedTo.includes(assignedFilter));
   }
 
   const storeFilter = document.getElementById('admin-store-filter')?.value;
@@ -991,59 +1490,82 @@ function renderAdminCases() {
   if (filtered.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="8" class="py-10 text-center text-slate-400">
+        <td colspan="9" class="py-10 text-center text-slate-400">
           查無符合狀態或條件的客訴案件
         </td>
       </tr>
     `;
+    updateBatchToolbar();
     return;
   }
 
-  tbody.innerHTML = filtered.map(item => `
-    <tr class="hover:bg-slate-50 transition-colors border-b border-slate-100 text-xs">
-      <td class="py-3.5 px-4 font-mono font-bold text-slate-900">
-        <a href="javascript:void(0)" onclick="openCaseDrawer('${item.id}')" class="text-blue-600 hover:underline">
-          ${item.id}
-        </a>
-      </td>
-      <td class="py-3.5 px-4">
-        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-xs font-medium font-mono">
-          ${item.storeCode || '2009'}
-        </span>
-        <div class="text-[11px] text-slate-500 mt-0.5">${item.storeName || '門市'}</div>
-      </td>
-      <td class="py-3.5 px-4">
-        <div class="font-bold text-slate-800">${item.customerName}</div>
-        <div class="text-[11px] text-slate-400 font-mono">${item.orderNo}</div>
-      </td>
-      <td class="py-3.5 px-4">
-        <span class="px-2 py-0.5 rounded text-xs font-semibold ${getWikiCategoryBadgeClass(item.category)}">
-          ${item.category}
-        </span>
-      </td>
-      <td class="py-3.5 px-4">
-        <span class="px-2 py-0.5 rounded-full text-xs font-bold ${getStatusBadgeClass(item.status)}">
-          ● ${item.status}
-        </span>
-      </td>
-      <td class="py-3.5 px-4 font-medium">
-        <span class="${getProcessorColor(item.assignedTo)}">
-          ${item.assignedTo || '<span class="text-slate-400 italic">待指派</span>'}
-        </span>
-      </td>
-      <td class="py-3.5 px-4 text-slate-500 font-mono">
-        ${item.createdAt}
-      </td>
-      <td class="py-3.5 px-4 text-right space-x-2">
-        <button onclick="openCaseDrawer('${item.id}')" class="px-2.5 py-1 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 font-semibold transition-colors">
-          處置抽屜
-        </button>
-      </td>
-    </tr>
-  `).join('');
+  tbody.innerHTML = filtered.map(item => {
+    const fu = window.footwearStore.getFollowUpStatus(item);
+    const isChecked = selectedBatchCaseIds.has(item.id);
+    let followUpBadge = '';
+
+    if (item.status === '已結案') {
+      followUpBadge = `<span class="text-emerald-700 font-bold">★ 滿意結案</span>`;
+    } else if (fu.isD3Due) {
+      followUpBadge = `<span class="px-2 py-0.5 rounded bg-rose-100 text-rose-700 font-bold animate-pulse">🔴 待初訪 (D+3)</span>`;
+    } else if (fu.isD14Due) {
+      followUpBadge = `<span class="px-2 py-0.5 rounded bg-amber-100 text-amber-700 font-bold">🟡 待結案 (D+14)</span>`;
+    } else {
+      followUpBadge = `<span class="text-slate-400 font-mono">${item.createdAt.slice(0, 10)}</span>`;
+    }
+
+    return `
+      <tr class="hover:bg-slate-50 transition-colors border-b border-slate-100 text-xs ${isChecked ? 'bg-blue-50/40' : ''}">
+        <td class="py-3 px-3 text-center">
+          <input type="checkbox" value="${item.id}" onchange="toggleBatchCaseSelect('${item.id}', this)" ${isChecked ? 'checked' : ''} class="case-row-checkbox rounded text-blue-600 focus:ring-blue-500">
+        </td>
+        <td class="py-3 px-3 font-mono font-bold text-slate-900">
+          <a href="javascript:void(0)" onclick="openCaseDrawer('${item.id}')" class="text-blue-600 hover:underline">
+            ${item.id}
+          </a>
+        </td>
+        <td class="py-3 px-3">
+          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-xs font-medium font-mono">
+            ${item.storeCode || '2009'}
+          </span>
+          <div class="text-[11px] text-slate-500 mt-0.5">${item.storeName || '門市'}</div>
+        </td>
+        <td class="py-3 px-3">
+          <div class="font-bold text-slate-800">${item.customerName}</div>
+          <div class="text-[11px] text-slate-400 font-mono">${item.orderNo}</div>
+        </td>
+        <td class="py-3 px-3">
+          <span class="px-2 py-0.5 rounded text-xs font-semibold ${getWikiCategoryBadgeClass(item.category)}">
+            ${item.category}
+          </span>
+        </td>
+        <td class="py-3 px-3">
+          <span class="px-2 py-0.5 rounded-full text-xs font-bold ${getStatusBadgeClass(item.status)}">
+            ● ${item.status}
+          </span>
+        </td>
+        <td class="py-3 px-3 font-medium">
+          <span class="${getProcessorColor(item.assignedTo)}">
+            ${item.assignedTo || '<span class="text-slate-400 italic">待指派</span>'}
+          </span>
+        </td>
+        <td class="py-3 px-3">
+          ${followUpBadge}
+        </td>
+        <td class="py-3 px-3 text-right space-x-2">
+          <button onclick="openCaseDrawer('${item.id}')" class="px-2.5 py-1 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 font-semibold transition-colors">
+            處置抽屜
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  updateBatchToolbar();
 }
 
 function updateAdminMetrics(list) {
+  const stats = window.footwearStore.getComplaintStats();
   const total = list.length;
   const pending = list.filter(c => c.status === '待受理' || c.status === '診斷中').length;
   const inProgress = list.filter(c => c.status === '正全重製中' || c.status === '門市微調中' || c.status === '待交件').length;
@@ -1055,6 +1577,206 @@ function updateAdminMetrics(list) {
   document.getElementById('metric-in-progress')?.replaceChildren(inProgress);
   document.getElementById('metric-tracking')?.replaceChildren(tracking);
   document.getElementById('metric-closed')?.replaceChildren(closed);
+
+  // Update D+3 / D+14 counts in filter tabs
+  const tabD3 = document.getElementById('tab-d3-count');
+  if (tabD3) tabD3.textContent = stats.d3DueCount;
+  const tabD14 = document.getElementById('tab-d14-count');
+  if (tabD14) tabD14.textContent = stats.d14DueCount;
+
+  const followUpBadge = document.getElementById('metric-followup-badge');
+  if (followUpBadge) {
+    if (stats.d3DueCount > 0) {
+      followUpBadge.classList.remove('hidden');
+      followUpBadge.textContent = `${stats.d3DueCount}件待初訪`;
+    } else {
+      followUpBadge.classList.add('hidden');
+    }
+  }
+}
+
+// --- Analytics Dashboard Renderer (30 Stores Quality & Complaints) ---
+function renderAnalyticsDashboard() {
+  const stats = window.footwearStore.getComplaintStats();
+
+  // Top Highlights
+  const avgRatingEl = document.getElementById('analytics-avg-rating');
+  if (avgRatingEl) avgRatingEl.textContent = stats.avgRating;
+
+  const topStoreEl = document.getElementById('analytics-top-store-highlight');
+  if (topStoreEl) {
+    topStoreEl.textContent = stats.storeRankings[0] ? `${stats.storeRankings[0].name} (${stats.storeRankings[0].count}件)` : '無資料';
+  }
+
+  const topCatEl = document.getElementById('analytics-top-category-highlight');
+  if (topCatEl) {
+    const cats = Object.entries(stats.categories).sort((a, b) => b[1] - a[1]);
+    topCatEl.textContent = cats[0] ? `${cats[0][0]} (${cats[0][1]}件)` : '無資料';
+  }
+
+  const pendingFuEl = document.getElementById('analytics-pending-followup');
+  if (pendingFuEl) {
+    pendingFuEl.textContent = `${stats.d3DueCount + stats.d14DueCount} 件`;
+  }
+
+  // 1. 30 Stores Ranking Bar Chart
+  const storeChart = document.getElementById('analytics-stores-chart');
+  if (storeChart) {
+    if (stats.storeRankings.length === 0) {
+      storeChart.innerHTML = '<p class="text-xs text-slate-400 text-center py-6">目前無門市客訴資料</p>';
+    } else {
+      storeChart.innerHTML = stats.storeRankings.map((s, idx) => `
+        <div class="space-y-1">
+          <div class="flex justify-between items-center text-xs">
+            <span class="font-bold text-slate-800 flex items-center gap-1.5">
+              <span class="w-5 h-5 rounded-full ${idx < 3 ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-600'} text-[10px] font-bold inline-flex items-center justify-center">${idx + 1}</span>
+              ${s.name}
+            </span>
+            <span class="font-mono text-slate-600 font-bold">${s.count} 件 (${s.percent}%)</span>
+          </div>
+          <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+            <div class="chart-bar-fill bg-blue-600 h-2.5 rounded-full" style="width: ${Math.max(8, s.percent)}%"></div>
+          </div>
+        </div>
+      `).join('');
+    }
+  }
+
+  // 2. Categories breakdown
+  const catChart = document.getElementById('analytics-categories-chart');
+  if (catChart) {
+    const catColors = {
+      '鞋墊做錯': 'border-red-200 bg-red-50/50 text-red-800',
+      '尺寸不符': 'border-amber-200 bg-amber-50/50 text-amber-800',
+      '穿著不適': 'border-blue-200 bg-blue-50/50 text-blue-800',
+      '其他': 'border-slate-200 bg-slate-50 text-slate-800'
+    };
+    catChart.innerHTML = Object.entries(stats.categories).map(([cat, count]) => `
+      <div class="p-3.5 rounded-xl border ${catColors[cat] || 'border-slate-200'}">
+        <span class="text-xs font-bold block mb-1">${cat}</span>
+        <span class="text-2xl font-black">${count}</span>
+        <span class="text-[10px] block mt-1 text-slate-500 font-medium">佔比 ${stats.total > 0 ? Math.round((count / stats.total) * 100) : 0}%</span>
+      </div>
+    `).join('');
+  }
+
+  // 3. Processors breakdown
+  const procChart = document.getElementById('analytics-processors-chart');
+  if (procChart) {
+    procChart.innerHTML = Object.entries(stats.processors).map(([proc, count]) => `
+      <div class="p-3.5 rounded-xl border border-slate-200 bg-white">
+        <span class="text-xs font-bold text-slate-700 block mb-1 truncate">${proc.replace('義肢鞋墊製造商', '')}</span>
+        <span class="text-2xl font-black text-slate-900">${count}</span>
+        <span class="text-[10px] block mt-1 text-slate-400 font-medium">承接 ${count} 件</span>
+      </div>
+    `).join('');
+  }
+
+  // 4. Top Shoe Brands
+  const shoeChart = document.getElementById('analytics-shoes-chart');
+  if (shoeChart) {
+    shoeChart.innerHTML = stats.shoeBrands.map(([brand, count]) => `
+      <div class="flex justify-between items-center text-xs p-2 rounded-lg bg-slate-50 border border-slate-100">
+        <span class="font-bold text-slate-800">👟 ${brand}</span>
+        <span class="font-mono text-purple-700 font-bold bg-purple-50 px-2 py-0.5 rounded">${count} 件案例</span>
+      </div>
+    `).join('') || '<p class="text-xs text-slate-400">尚無鞋款資料</p>';
+  }
+
+  // 5. Pain Points Heatmap
+  const painChart = document.getElementById('analytics-pain-chart');
+  if (painChart) {
+    painChart.innerHTML = stats.painPoints.map(([pain, count]) => `
+      <div class="flex justify-between items-center text-xs p-2 rounded-lg bg-slate-50 border border-slate-100">
+        <span class="font-bold text-slate-800">📍 ${pain}</span>
+        <span class="font-mono text-rose-700 font-bold bg-rose-50 px-2 py-0.5 rounded">${count} 次回報</span>
+      </div>
+    `).join('') || '<p class="text-xs text-slate-400">尚無痛點標註資料</p>';
+  }
+}
+
+// --- Batch Operations for Factory & Lab Managers ---
+function toggleSelectAllCases(masterCb) {
+  const isChecked = masterCb.checked;
+  const checkboxes = document.querySelectorAll('.case-row-checkbox');
+  checkboxes.forEach(cb => {
+    cb.checked = isChecked;
+    if (isChecked) {
+      selectedBatchCaseIds.add(cb.value);
+    } else {
+      selectedBatchCaseIds.delete(cb.value);
+    }
+  });
+  updateBatchToolbar();
+}
+
+function toggleBatchCaseSelect(id, cb) {
+  if (cb.checked) {
+    selectedBatchCaseIds.add(id);
+  } else {
+    selectedBatchCaseIds.delete(id);
+  }
+  updateBatchToolbar();
+}
+
+function updateBatchToolbar() {
+  const toolbar = document.getElementById('batch-actions-toolbar');
+  const countEl = document.getElementById('batch-selected-count');
+  if (!toolbar || !countEl) return;
+
+  const count = selectedBatchCaseIds.size;
+  countEl.textContent = count;
+
+  if (count > 0) {
+    toolbar.classList.remove('hidden');
+  } else {
+    toolbar.classList.add('hidden');
+    const masterCb = document.getElementById('admin-select-all');
+    if (masterCb) masterCb.checked = false;
+  }
+}
+
+function clearBatchSelection() {
+  selectedBatchCaseIds.clear();
+  document.querySelectorAll('.case-row-checkbox').forEach(cb => cb.checked = false);
+  const masterCb = document.getElementById('admin-select-all');
+  if (masterCb) masterCb.checked = false;
+  updateBatchToolbar();
+}
+
+function handleBatchTrackingPrompt() {
+  const code = prompt('請輸入批次宅配或物流單號前綴（例如：黑貓 9021-）：');
+  if (code && code.trim()) {
+    const ids = Array.from(selectedBatchCaseIds);
+    window.footwearStore.batchUpdateComplaints(ids, {
+      trackingCode: code.trim(),
+      deliveryType: '黑貓宅配到府'
+    });
+    showToast(`已批次為 ${ids.length} 筆案件填入物流單號！`, 'success');
+    renderAdminCases();
+  }
+}
+
+function applyBatchActions() {
+  const status = document.getElementById('batch-status-select')?.value;
+  const assignedTo = document.getElementById('batch-assigned-select')?.value;
+
+  if (!status && !assignedTo) {
+    showToast('請至少選擇一項欲變更的狀態或責任人！', 'error');
+    return;
+  }
+
+  const updates = {};
+  if (status) updates.status = status;
+  if (assignedTo) updates.assignedTo = assignedTo;
+
+  const ids = Array.from(selectedBatchCaseIds);
+  window.footwearStore.batchUpdateComplaints(ids, updates);
+
+  showToast(`已成功批次更新 ${ids.length} 筆案件！`, 'success');
+  clearBatchSelection();
+  renderAdminCases();
+  if (currentAdminSubView === 'analytics') renderAnalyticsDashboard();
 }
 
 function getStatusBadgeClass(status) {
@@ -1100,11 +1822,22 @@ function openCaseDrawer(caseId) {
   document.getElementById('drawer-case-id').textContent = item.id;
   document.getElementById('drawer-store-info').textContent = `${item.storeCode || '2009'} ${item.storeName || '門市'}`;
   document.getElementById('drawer-customer-name').textContent = item.customerName;
-  document.getElementById('drawer-customer-phone').textContent = item.phone;
   document.getElementById('drawer-order-no').textContent = item.orderNo;
   document.getElementById('drawer-shoe-model').textContent = `${item.shoeModel || '無'} (${item.shoeSize || '無'})`;
   document.getElementById('drawer-wear-days').textContent = item.wearDays || '未填寫';
   document.getElementById('drawer-customer-notes').textContent = item.customerNotes;
+
+  // Annotated Photo Preview in Drawer
+  const photoBox = document.getElementById('drawer-photo-box');
+  const photoImg = document.getElementById('drawer-photo-img');
+  if (photoBox && photoImg) {
+    if (item.photoUrl) {
+      photoImg.src = item.photoUrl;
+      photoBox.classList.remove('hidden');
+    } else {
+      photoBox.classList.add('hidden');
+    }
+  }
 
   // Pain Points
   const ppCont = document.getElementById('drawer-pain-points');
@@ -1130,6 +1863,14 @@ function openCaseDrawer(caseId) {
   document.getElementById('drawer-save-wiki').checked = !!item.isSavedToWiki;
 
   drawer.classList.remove('hidden');
+}
+
+function quickFillD3Log(text) {
+  const input = document.getElementById('drawer-d3-log');
+  if (input) {
+    input.value = text;
+    showToast('已快速填入 D+3 回訪紀錄', 'info');
+  }
 }
 
 function closeCaseDrawer() {
@@ -1187,6 +1928,7 @@ function saveCaseDrawerUpdates() {
   showToast(`案件 ${activeDrawerCaseId} 更新成功！`, 'success');
   closeCaseDrawer();
   renderAdminCases();
+  if (currentAdminSubView === 'analytics') renderAnalyticsDashboard();
 }
 
 function printWorkOrder() {
@@ -1196,6 +1938,9 @@ function printWorkOrder() {
 
   const printArea = document.getElementById('printable-work-order');
   if (!printArea) return;
+
+  const trackUrl = `${window.location.origin}${window.location.pathname}?case=${item.id}`;
+  const qrSvg = QRCodeGenerator.generateSVG(trackUrl, 90);
 
   printArea.innerHTML = `
     <div class="p-8 border-2 border-black rounded-lg max-w-2xl mx-auto my-4 text-black bg-white">
@@ -1207,9 +1952,15 @@ function printWorkOrder() {
             <p class="text-xs text-slate-700">3D 列印自然足鞋墊客訴處置/重製派工單 (主管審定：Jason)</p>
           </div>
         </div>
-        <div class="text-right">
-          <span class="text-xs font-mono font-bold block">案號：${item.id}</span>
-          <span class="text-xs bg-slate-100 px-2 py-0.5 rounded border border-black">${item.storeCode || '2009'} ${item.storeName || '門市'}</span>
+        <div class="flex items-center gap-3 text-right">
+          <div>
+            <span class="text-xs font-mono font-bold block">案號：${item.id}</span>
+            <span class="text-xs bg-slate-100 px-2 py-0.5 rounded border border-black">${item.storeCode || '2009'} ${item.storeName || '門市'}</span>
+          </div>
+          <div class="border border-black p-1 bg-white">
+            ${qrSvg}
+            <span class="text-[9px] block text-center mt-0.5 font-bold">掃碼查進度</span>
+          </div>
         </div>
       </div>
 
@@ -1227,6 +1978,12 @@ function printWorkOrder() {
         <div class="font-bold mb-1">【客訴主訴與足部痛點】</div>
         <p class="mb-2 text-xs leading-relaxed">${item.customerNotes}</p>
         <div class="text-xs">痛點勾選：${(item.painPoints || []).join('、 ') || '無'}</div>
+        ${item.photoUrl ? `
+          <div class="mt-3">
+            <span class="font-bold text-xs block mb-1">現場照片標註：</span>
+            <img src="${item.photoUrl}" alt="照片標註" class="max-h-36 rounded border border-black object-contain">
+          </div>
+        ` : ''}
       </div>
 
       <div class="text-sm mb-4 border-b border-black pb-4">
@@ -1401,3 +2158,20 @@ window.openCloudConfigModal = openCloudConfigModal;
 window.closeCloudConfigModal = closeCloudConfigModal;
 window.handleCloudConfigSubmit = handleCloudConfigSubmit;
 window.triggerManualCloudSync = triggerManualCloudSync;
+window.switchAdminSubView = switchAdminSubView;
+window.toggleSelectAllCases = toggleSelectAllCases;
+window.toggleBatchCaseSelect = toggleBatchCaseSelect;
+window.applyBatchActions = applyBatchActions;
+window.clearBatchSelection = clearBatchSelection;
+window.handleBatchTrackingPrompt = handleBatchTrackingPrompt;
+window.handlePhotoSelect = handlePhotoSelect;
+window.openAnnotationModal = openAnnotationModal;
+window.closeAnnotationModal = closeAnnotationModal;
+window.setAnnotationTool = setAnnotationTool;
+window.setAnnotationColor = setAnnotationColor;
+window.undoAnnotation = undoAnnotation;
+window.clearAnnotationCanvas = clearAnnotationCanvas;
+window.saveAnnotationAndApply = saveAnnotationAndApply;
+window.removePhoto = removePhoto;
+window.quickFillD3Log = quickFillD3Log;
+
