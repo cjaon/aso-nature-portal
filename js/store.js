@@ -14,6 +14,10 @@ const STORAGE_KEYS = {
   GAS_URL: 'aso_gas_api_url'
 };
 
+// 預設 Google Apps Script 雲端同步網址 (Jason 授權之 Apps Script Web App)
+const DEFAULT_GAS_API_URL = 'https://script.google.com/macros/s/AKfycbzRAB-ek6md9h2eUAX2JJu_mOW_dq4PplPOTppp9sqhiFKSWeyYBOwms4LG0xI1DUYkGw/exec';
+window.DEFAULT_GAS_API_URL = DEFAULT_GAS_API_URL;
+
 // ASO Standard Stores List
 const ASO_STORES = window.ASO_STORES || [
   { code: '2007', alphaCode: 'N', name: '內湖門市', dept: '營業一部', region: '台北市', phone: '02-27932473', address: '台北市內湖區成功路四段40號1樓' },
