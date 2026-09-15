@@ -364,12 +364,15 @@ function handleAdminAuthSubmit(e) {
   e.preventDefault();
   const passInput = document.getElementById('admin-auth-password');
   const enteredPass = passInput.value.trim();
+  const authResult = window.footwearStore.verifyAdminPassword(enteredPass);
 
-  if (window.footwearStore.verifyAdminPassword(enteredPass)) {
-    window.footwearStore.setAdminAuthenticated(true);
+  if (authResult.valid) {
+    window.footwearStore.setAdminAuthenticated(true, authResult.role);
+    applyAdminRoleUiRestrictions();
     updateNavbarAdminStatus();
     closeAdminAuthModal();
-    showToast('管理員身分驗證成功，已解鎖後台！', 'success');
+    const roleTitle = authResult.role === 'super_admin' ? '👑 主要管理者 (Jason)' : '👤 一般管理者 (正全/顧問)';
+    showToast(`身分驗證成功【${roleTitle}】，已解鎖後台！`, 'success');
 
     const nextView = pendingAdminTargetView || 'admin-cases';
     switchView(nextView);
@@ -382,8 +385,36 @@ function handleAdminAuthSubmit(e) {
   }
 }
 
+function applyAdminRoleUiRestrictions() {
+  const isAuth = window.footwearStore.isAdminAuthenticated();
+  const isSuper = window.footwearStore.isSuperAdmin();
+
+  const analyticsBtn = document.getElementById('admin-subview-analytics-btn');
+  const exportCsvBtn = document.getElementById('export-csv-btn');
+
+  if (analyticsBtn) {
+    if (isAuth && !isSuper) {
+      analyticsBtn.classList.add('hidden');
+      if (currentAdminSubView === 'analytics') {
+        switchAdminSubView('list');
+      }
+    } else {
+      analyticsBtn.classList.remove('hidden');
+    }
+  }
+
+  if (exportCsvBtn) {
+    if (isAuth && !isSuper) {
+      exportCsvBtn.classList.add('hidden');
+    } else {
+      exportCsvBtn.classList.remove('hidden');
+    }
+  }
+}
+
 function adminLogout() {
   window.footwearStore.setAdminAuthenticated(false);
+  applyAdminRoleUiRestrictions();
   updateNavbarAdminStatus();
   showToast('已安全登出管理員身分', 'info');
   switchView('announcements');
@@ -392,7 +423,10 @@ function adminLogout() {
 function updateNavbarAdminStatus() {
   const statusContainer = document.getElementById('navbar-admin-status');
   const isAuth = window.footwearStore.isAdminAuthenticated();
+  const isSuper = window.footwearStore.isSuperAdmin();
   const isCloud = window.footwearStore.isCloudConnected();
+
+  applyAdminRoleUiRestrictions();
 
   const cloudTag = isCloud 
     ? `<span title="已連線至 Google 試算表雲端同步" class="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full cursor-pointer" onclick="openCloudConfigModal()"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>雲端同步中</span>`
@@ -400,13 +434,16 @@ function updateNavbarAdminStatus() {
 
   if (statusContainer) {
     if (isAuth) {
+      const roleBadge = isSuper
+        ? `<span class="font-bold text-emerald-800">👑 主要管理者 (Jason)</span>`
+        : `<span class="font-bold text-blue-800">👤 一般管理者 (正全/顧問)</span>`;
+
       statusContainer.innerHTML = `
-        <div class="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-lg border border-emerald-200 text-xs">
-          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span class="font-bold">管理員</span>
+        <div class="flex items-center gap-1.5 ${isSuper ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-blue-50 border-blue-200 text-blue-700'} px-2.5 py-1 rounded-lg border text-xs">
+          <span class="w-2 h-2 rounded-full ${isSuper ? 'bg-emerald-500' : 'bg-blue-500'} animate-pulse"></span>
+          ${roleBadge}
           <button onclick="openChangePasswordModal()" class="ml-1 text-slate-500 hover:text-slate-800 underline">改密碼</button>
-          <span class="text-slate-300">|</span>
-          <button onclick="openCloudConfigModal()" class="text-blue-600 hover:text-blue-800 font-semibold underline">☁️ 雲端同步</button>
+          ${isSuper ? `<span class="text-slate-300">|</span><button onclick="openCloudConfigModal()" class="text-blue-600 hover:text-blue-800 font-semibold underline">☁️ 雲端同步</button>` : ''}
           <span class="text-slate-300">|</span>
           <button onclick="adminLogout()" class="text-rose-600 hover:text-rose-800 font-semibold underline">登出</button>
         </div>
@@ -430,8 +467,8 @@ function updateNavbarAdminStatus() {
   const mobileAdminDot = document.getElementById('mobile-admin-dot');
   if (mobileAdminDot) {
     if (isAuth) {
-      mobileAdminDot.className = 'w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse';
-      mobileAdminDot.title = '管理員已驗證';
+      mobileAdminDot.className = `w-1.5 h-1.5 rounded-full ${isSuper ? 'bg-emerald-500' : 'bg-blue-500'} animate-pulse`;
+      mobileAdminDot.title = isSuper ? '主要管理者已驗證' : '一般管理者已驗證';
     } else {
       mobileAdminDot.className = 'w-1.5 h-1.5 rounded-full bg-amber-500';
       mobileAdminDot.title = '需密碼驗證';
@@ -458,7 +495,8 @@ function handleChangePasswordSubmit(e) {
   const newPass = document.getElementById('cp-new-password').value.trim();
   const confirmPass = document.getElementById('cp-confirm-password').value.trim();
 
-  if (!window.footwearStore.verifyAdminPassword(oldPass)) {
+  const authCheck = window.footwearStore.verifyAdminPassword(oldPass);
+  if (!authCheck.valid) {
     showToast('目前密碼不正確！', 'error');
     return;
   }
@@ -473,9 +511,14 @@ function handleChangePasswordSubmit(e) {
     return;
   }
 
-  window.footwearStore.setAdminPassword(newPass);
+  if (authCheck.role === 'super_admin') {
+    window.footwearStore.setSuperAdminPassword(newPass);
+    showToast('主要管理者 (Jason) 密碼已成功更新！', 'success');
+  } else {
+    window.footwearStore.setGeneralAdminPassword(newPass);
+    showToast('一般管理者密碼已成功更新！', 'success');
+  }
   closeChangePasswordModal();
-  showToast('管理員通行密碼已成功更新！', 'success');
 }
 
 // Google Sheets Cloud Config Modal Actions
@@ -1342,7 +1385,9 @@ function initComplaintForm() {
     const category = document.getElementById('complaint-category').value;
     const priority = document.getElementById('complaint-priority').value;
     const shoeModel = document.getElementById('complaint-shoe').value.trim();
-    const shoeSize = document.getElementById('complaint-size').value.trim();
+    const sizeLeft = document.getElementById('complaint-size-left')?.value.trim() || '';
+    const sizeRight = document.getElementById('complaint-size-right')?.value.trim() || '';
+    const shoeSize = (sizeLeft || sizeRight) ? `左: ${sizeLeft || '—'} cm / 右: ${sizeRight || '—'} cm` : '';
     const wearDays = document.getElementById('complaint-days').value;
     const customerNotes = document.getElementById('complaint-notes').value.trim();
     const photoUrl = document.getElementById('complaint-annotated-photo')?.value || '';
@@ -1376,6 +1421,8 @@ function initComplaintForm() {
       category,
       priority,
       shoeModel,
+      shoeSizeLeft: sizeLeft,
+      shoeSizeRight: sizeRight,
       shoeSize,
       wearDays,
       painPoints: [...selectedPainPoints],
@@ -1398,6 +1445,18 @@ function initComplaintForm() {
     const qrContainer = document.getElementById('submitted-qr-container');
     if (qrContainer) {
       qrContainer.innerHTML = QRCodeGenerator.generateSVG(trackUrl, 120);
+    }
+
+    // Attached Photo Confirmation
+    const photoConf = document.getElementById('submitted-photo-confirmation');
+    const photoThumb = document.getElementById('submitted-photo-thumb');
+    if (photoConf && photoThumb) {
+      if (photoUrl) {
+        photoThumb.src = photoUrl;
+        photoConf.classList.remove('hidden');
+      } else {
+        photoConf.classList.add('hidden');
+      }
     }
 
     // Show Success Modal with Case ID
@@ -1457,6 +1516,18 @@ function executeTrackSearch() {
   document.getElementById('track-shoe-info').textContent = `${found.shoeModel || '自備鞋款'} (${found.shoeSize || '未填寫尺碼'})`;
   document.getElementById('track-created-at').textContent = found.createdAt;
   document.getElementById('track-notes').textContent = found.customerNotes;
+
+  // Attached Photo
+  const photoBox = document.getElementById('track-photo-box');
+  const photoImg = document.getElementById('track-photo-img');
+  if (photoBox && photoImg) {
+    if (found.photoUrl) {
+      photoImg.src = found.photoUrl;
+      photoBox.classList.remove('hidden');
+    } else {
+      photoBox.classList.add('hidden');
+    }
+  }
 
   // Pain Points
   const painPointsContainer = document.getElementById('track-pain-points');
@@ -1602,7 +1673,7 @@ function renderAdminCases() {
   if (filtered.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="9" class="py-10 text-center text-slate-400">
+        <td colspan="10" class="py-10 text-center text-slate-400">
           查無符合狀態或條件的客訴案件
         </td>
       </tr>
@@ -1645,6 +1716,14 @@ function renderAdminCases() {
         <td class="py-3 px-3">
           <div class="font-bold text-slate-800">${item.customerName}</div>
           <div class="text-[11px] text-slate-400 font-mono">${item.orderNo}</div>
+        </td>
+        <td class="py-3 px-3">
+          ${item.photoUrl ? `
+            <button type="button" onclick="openPhotoLightbox('${item.id}')" class="inline-flex items-center gap-1 px-2 py-1 rounded bg-blue-50 text-blue-700 hover:bg-blue-100 font-semibold text-[11px] border border-blue-200 transition-colors shadow-2xs">
+              <span>📷</span>
+              <span>檢視附圖</span>
+            </button>
+          ` : `<span class="text-slate-300 text-xs">—</span>`}
         </td>
         <td class="py-3 px-3">
           <span class="px-2 py-0.5 rounded text-xs font-semibold ${getWikiCategoryBadgeClass(item.category)}">
@@ -2122,8 +2201,17 @@ function printWorkOrder() {
   window.print();
 }
 
-// Export complaints to CSV with Store fields
+// Export complaints to CSV with Store fields (Super Admin only)
 function exportComplaintsCsv() {
+  if (!window.footwearStore.isAdminAuthenticated()) {
+    openAdminAuthModal('admin-cases');
+    return;
+  }
+  if (!window.footwearStore.isSuperAdmin()) {
+    showToast('一般管理者無權限匯出統計報表或資料，僅主要管理者 (Jason) 可匯出！', 'error');
+    return;
+  }
+
   const list = window.footwearStore.getComplaints();
   if (list.length === 0) {
     showToast('目前無客訴資料可匯出', 'info');
@@ -2165,6 +2253,7 @@ function renderCmsAnnouncements() {
   const list = window.footwearStore.getAnnouncements();
   const tbody = document.getElementById('cms-announcements-table');
   if (!tbody) return;
+  const isSuper = window.footwearStore.isSuperAdmin();
 
   tbody.innerHTML = list.map(item => `
     <tr class="hover:bg-slate-50 border-b border-slate-100 text-xs">
@@ -2175,7 +2264,10 @@ function renderCmsAnnouncements() {
       <td class="py-3 px-4 text-slate-600 font-medium">${item.author}</td>
       <td class="py-3 px-4 font-mono text-slate-400">${item.date}</td>
       <td class="py-3 px-4 text-right space-x-2">
-        <button onclick="deleteCmsAnnouncement('${item.id}')" class="text-rose-600 hover:underline font-semibold">刪除</button>
+        ${isSuper 
+          ? `<button onclick="deleteCmsAnnouncement('${item.id}')" class="text-rose-600 hover:underline font-semibold">刪除</button>`
+          : `<span class="text-slate-300 text-[11px]">—</span>`
+        }
       </td>
     </tr>
   `).join('');
@@ -2221,6 +2313,10 @@ function deleteCmsAnnouncement(id) {
     openAdminAuthModal('admin-cms');
     return;
   }
+  if (!window.footwearStore.isSuperAdmin()) {
+    showToast('一般管理者無權限刪除公告，此操作僅限主要管理者 (Jason)！', 'error');
+    return;
+  }
 
   if (confirm('確定要刪除此則公告嗎？')) {
     window.footwearStore.deleteAnnouncement(id);
@@ -2231,11 +2327,53 @@ function deleteCmsAnnouncement(id) {
 }
 
 function resetSystemData() {
+  if (!window.footwearStore.isAdminAuthenticated()) {
+    openAdminAuthModal('admin-cms');
+    return;
+  }
+  if (!window.footwearStore.isSuperAdmin()) {
+    showToast('一般管理者無權限重置系統資料，此操作僅限主要管理者 (Jason)！', 'error');
+    return;
+  }
+
   if (confirm('確定要將所有公告、客訴與 Wiki 重置為預設展示資料嗎？此操作無法復原。')) {
     window.footwearStore.resetAll();
     showToast('系統資料已重置為預設展示狀態！', 'success');
     setTimeout(() => location.reload(), 600);
   }
+}
+
+// --- 7. Photo Lightbox Module ---
+function openPhotoLightbox(caseId) {
+  const item = window.footwearStore.getComplaintById(caseId);
+  if (!item || !item.photoUrl) {
+    showToast('此案件無附加照片', 'info');
+    return;
+  }
+
+  const modal = document.getElementById('photo-lightbox-modal');
+  const title = document.getElementById('photo-lightbox-title');
+  const img = document.getElementById('photo-lightbox-img');
+  const caption = document.getElementById('photo-lightbox-caption');
+
+  if (modal && img) {
+    img.src = item.photoUrl;
+    if (title) title.textContent = `${item.id} - ${item.customerName} (${item.storeName || ''})`;
+    if (caption) caption.textContent = `${item.category} ｜ 搭配鞋款：${item.shoeModel || '自備'} (${item.shoeSize || ''})`;
+    modal.classList.remove('hidden');
+  }
+}
+
+function closePhotoLightbox() {
+  const modal = document.getElementById('photo-lightbox-modal');
+  if (modal) modal.classList.add('hidden');
+}
+
+function openPhotoLightboxCurrentTrack() {
+  const caseNo = document.getElementById('track-case-no')?.textContent.trim();
+  const searchInput = document.getElementById('track-search-input')?.value.trim();
+  const targetId = caseNo || searchInput;
+  if (targetId) openPhotoLightbox(targetId);
 }
 
 // Global functions for inline HTML events
@@ -2286,4 +2424,7 @@ window.clearAnnotationCanvas = clearAnnotationCanvas;
 window.saveAnnotationAndApply = saveAnnotationAndApply;
 window.removePhoto = removePhoto;
 window.quickFillD3Log = quickFillD3Log;
+window.openPhotoLightbox = openPhotoLightbox;
+window.closePhotoLightbox = closePhotoLightbox;
+window.openPhotoLightboxCurrentTrack = openPhotoLightboxCurrentTrack;
 

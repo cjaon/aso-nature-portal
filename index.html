@@ -249,9 +249,21 @@
                   <label class="block text-xs font-bold text-slate-700 mb-1">搭配穿著之鞋款與型號</label>
                   <input type="text" id="complaint-shoe" placeholder="例如：ASICS KAYANO 30 / HOKA / 阿瘦皮鞋" class="w-full text-sm px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all">
                 </div>
-                <div>
-                  <label class="block text-xs font-bold text-slate-700 mb-1">鞋子尺碼與楦頭</label>
-                  <input type="text" id="complaint-size" placeholder="例如：26.5 cm (2E寬楦)" class="w-full text-sm px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all">
+                <div class="grid grid-cols-2 gap-2">
+                  <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">左腳鞋子尺碼 (公分) <span class="text-rose-500">*</span></label>
+                    <div class="relative">
+                      <input type="number" step="0.5" id="complaint-size-left" required placeholder="例如 26.5" class="w-full text-sm px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all pr-9 font-medium">
+                      <span class="absolute right-2.5 top-2.5 text-xs text-slate-400 font-medium pointer-events-none">cm</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">右腳鞋子尺碼 (公分) <span class="text-rose-500">*</span></label>
+                    <div class="relative">
+                      <input type="number" step="0.5" id="complaint-size-right" required placeholder="例如 26.5" class="w-full text-sm px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all pr-9 font-medium">
+                    <span class="absolute right-2.5 top-2.5 text-xs text-slate-400 font-medium pointer-events-none">cm</span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -480,6 +492,16 @@
                 <span class="text-slate-500 block mb-0.5">客訴原始描述：</span>
                 <p id="track-notes" class="text-slate-700 bg-white p-2.5 rounded-lg border border-slate-200 leading-relaxed"></p>
               </div>
+              <!-- Attached Photo Display in Tracking View -->
+              <div id="track-photo-box" class="pt-2 border-t border-slate-200 hidden">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="text-slate-500 font-bold">📷 實物與瑕疵佐證照片：</span>
+                  <span class="text-[10px] text-blue-600 font-medium">點擊照片放大檢視</span>
+                </div>
+                <div class="p-2 bg-white rounded-xl border border-slate-200 inline-block cursor-pointer group" onclick="openPhotoLightboxCurrentTrack()">
+                  <img id="track-photo-img" src="" alt="瑕疵佐證照片" class="max-h-48 rounded-lg object-contain shadow-2xs group-hover:opacity-90 transition-opacity">
+                </div>
+              </div>
             </div>
           </div>
 
@@ -533,7 +555,7 @@
             </button>
           </div>
 
-          <button onclick="exportComplaintsCsv()" class="px-3.5 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-colors flex items-center gap-1.5 shadow-sm">
+          <button id="export-csv-btn" onclick="exportComplaintsCsv()" class="px-3.5 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-colors flex items-center gap-1.5 shadow-sm">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
             </svg>
@@ -649,6 +671,7 @@
                   <th class="py-3 px-3">案件編號</th>
                   <th class="py-3 px-3">受理門市</th>
                   <th class="py-3 px-3">客戶 / 原訂單</th>
+                  <th class="py-3 px-3">實物照片</th>
                   <th class="py-3 px-3">客訴分類</th>
                   <th class="py-3 px-3">處理狀態</th>
                   <th class="py-3 px-3">責任處理人</th>
@@ -1186,6 +1209,17 @@
         <div id="submitted-case-id" class="font-mono text-lg font-black text-blue-600 select-all"></div>
       </div>
 
+      <!-- Attached Photo Confirmation -->
+      <div id="submitted-photo-confirmation" class="bg-emerald-50 border border-emerald-200 rounded-xl p-3 mb-4 flex items-center gap-3 hidden">
+        <img id="submitted-photo-thumb" src="" alt="照片縮圖" class="w-12 h-12 rounded-lg object-cover border border-emerald-200 shadow-2xs">
+        <div class="text-left">
+          <span class="text-xs font-bold text-emerald-800 flex items-center gap-1">
+            <span>📷</span> 實物照片已成功附加
+          </span>
+          <p class="text-[11px] text-emerald-600">已隨工單同步存檔，供技術團隊審閱</p>
+        </div>
+      </div>
+
       <!-- QR Code Container for Instant Tracking -->
       <div class="p-4 bg-blue-50/60 rounded-xl border border-blue-100 mb-5 flex flex-col items-center justify-center">
         <div class="flex items-center gap-1.5 text-xs font-bold text-blue-900 mb-2">
@@ -1403,6 +1437,32 @@
             儲存案件更新
           </button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. Photo Lightbox Modal -->
+  <div id="photo-lightbox-modal" class="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-4 hidden animate-fade-in" onclick="if(event.target === this) closePhotoLightbox()">
+    <div class="relative max-w-3xl w-full max-h-[90vh] bg-slate-900 rounded-2xl p-4 border border-slate-700 shadow-2xl flex flex-col items-center">
+      <div class="w-full flex items-center justify-between pb-3 border-b border-slate-800 text-white">
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-bold px-2 py-0.5 rounded bg-blue-500/20 text-blue-300">📷 實物照片檢視</span>
+          <span id="photo-lightbox-title" class="font-mono text-xs text-slate-300"></span>
+        </div>
+        <button type="button" onclick="closePhotoLightbox()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+      <div class="w-full flex-1 flex items-center justify-center overflow-auto p-2 my-2 min-h-[260px]">
+        <img id="photo-lightbox-img" src="" alt="客訴實物照片" class="max-w-full max-h-[70vh] object-contain rounded-lg shadow-lg">
+      </div>
+      <div class="w-full pt-2 border-t border-slate-800 flex justify-between items-center text-[11px] text-slate-400">
+        <span id="photo-lightbox-caption">客訴檢附瑕疵佐證圖</span>
+        <button type="button" onclick="closePhotoLightbox()" class="px-4 py-1.5 bg-slate-800 text-white rounded-lg hover:bg-slate-700 text-xs font-bold">
+          關閉
+        </button>
       </div>
     </div>
   </div>

@@ -17,15 +17,29 @@
  * 8. 將該網址貼入前端系統的管理員設定中，即可享受完全免費、跨全台 25 間門市即時同步！
  */
 
+// 鎖定 Google 試算表 ID（Jason 授權之試算表）
+const SPREADSHEET_ID = '1Pp-l4yIpoOosn3qU7F64vrNZaC7eTjriyou3v4-O5zI';
+
 const SHEET_NAMES = {
   COMPLAINTS: 'Complaints',
   ANNOUNCEMENTS: 'Announcements',
   WIKI: 'Wiki'
 };
 
+function getSpreadsheet() {
+  try {
+    if (SPREADSHEET_ID && SPREADSHEET_ID.trim().length > 5) {
+      return SpreadsheetApp.openById(SPREADSHEET_ID.trim());
+    }
+  } catch (err) {
+    console.warn('無法以 openById 開啟，改以 getActiveSpreadsheet 獲取：', err);
+  }
+  return SpreadsheetApp.getActiveSpreadsheet();
+}
+
 // --- 初始一鍵建表 ---
 function initialSetup() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ss = getSpreadsheet();
 
   // 1. Complaints 工作表
   let cSheet = ss.getSheetByName(SHEET_NAMES.COMPLAINTS);
@@ -36,7 +50,7 @@ function initialSetup() {
       '原訂單號', '客訴分類', '優先級', '搭配鞋款', '鞋子尺碼', '穿著時長',
       '足部痛點', '主訴詳情', '處理狀態', '責任處理人', '處置手段', '工單號碼',
       '交件方式', '物流追蹤碼', 'D+3追蹤紀錄', 'D+14滿意星級', 'D+14結案說明',
-      '立案時間', '最後更新'
+      '立案時間', '最後更新', '照片附件'
     ];
     cSheet.appendRow(cHeaders);
     cSheet.getRange(1, 1, 1, cHeaders.length).setBackground('#1e293b').setFontColor('#ffffff').setFontWeight('bold');
@@ -70,7 +84,7 @@ function initialSetup() {
 function doGet(e) {
   try {
     const action = e.parameter.action || 'getAll';
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const ss = getSpreadsheet();
 
     if (action === 'getAll') {
       const complaints = getSheetRows(ss, SHEET_NAMES.COMPLAINTS, parseComplaintRow);
@@ -104,7 +118,7 @@ function doPost(e) {
     const rawData = e.postData.contents;
     const body = JSON.parse(rawData);
     const action = body.action || 'addComplaint';
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const ss = getSpreadsheet();
 
     if (action === 'addComplaint') {
       const cSheet = ss.getSheetByName(SHEET_NAMES.COMPLAINTS);
@@ -136,7 +150,8 @@ function doPost(e) {
         c.d14Rating || 0,
         c.d14Log || '',
         c.createdAt,
-        c.updatedAt
+        c.updatedAt,
+        c.photoUrl || ''
       ];
       ss.getSheetByName(SHEET_NAMES.COMPLAINTS).appendRow(row);
       return createJsonResponse({ success: true, caseId: c.id });
@@ -167,6 +182,7 @@ function doPost(e) {
         if (updates.d14Rating !== undefined) cSheet.getRange(rowIndex, 22).setValue(updates.d14Rating);
         if (updates.d14Log !== undefined) cSheet.getRange(rowIndex, 23).setValue(updates.d14Log);
         if (updates.updatedAt !== undefined) cSheet.getRange(rowIndex, 25).setValue(updates.updatedAt);
+        if (updates.photoUrl !== undefined) cSheet.getRange(rowIndex, 26).setValue(updates.photoUrl);
         return createJsonResponse({ success: true, updatedId: targetId });
       } else {
         return createJsonResponse({ success: false, error: 'Case ID not found' });
@@ -223,7 +239,8 @@ function parseComplaintRow(row) {
     d14Rating: Number(row[21]) || 0,
     d14Log: row[22],
     createdAt: row[23],
-    updatedAt: row[24]
+    updatedAt: row[24],
+    photoUrl: row[25] || ''
   };
 }
 

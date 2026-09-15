@@ -8,7 +8,9 @@ const STORAGE_KEYS = {
   WIKI: 'footwear_wiki_v1',
   COMPLAINTS: 'footwear_complaints_v1',
   ADMIN_AUTH: 'aso_admin_auth_session',
-  ADMIN_PASS: 'aso_admin_security_pass',
+  ADMIN_ROLE: 'aso_admin_role_session', // 'super_admin' (Jason) or 'general_admin' (正全/顧問)
+  SUPER_ADMIN_PASS: 'aso_super_admin_security_pass',
+  STAFF_ADMIN_PASS: 'aso_staff_admin_security_pass',
   GAS_URL: 'aso_gas_api_url'
 };
 
@@ -381,29 +383,65 @@ class Store {
     localStorage.setItem(STORAGE_KEYS.COMPLAINTS, JSON.stringify(SEED_COMPLAINTS));
   }
 
-  // --- Admin Authentication ---
+  // --- Admin Authentication (Dual Roles: Super Admin vs General Admin) ---
   isAdminAuthenticated() {
     return sessionStorage.getItem(STORAGE_KEYS.ADMIN_AUTH) === 'true';
   }
 
-  setAdminAuthenticated(val) {
+  getAdminRole() {
+    if (!this.isAdminAuthenticated()) return null;
+    return sessionStorage.getItem(STORAGE_KEYS.ADMIN_ROLE) || 'super_admin';
+  }
+
+  isSuperAdmin() {
+    return this.getAdminRole() === 'super_admin';
+  }
+
+  setAdminAuthenticated(val, role = 'super_admin') {
     if (val) {
       sessionStorage.setItem(STORAGE_KEYS.ADMIN_AUTH, 'true');
+      sessionStorage.setItem(STORAGE_KEYS.ADMIN_ROLE, role);
     } else {
       sessionStorage.removeItem(STORAGE_KEYS.ADMIN_AUTH);
+      sessionStorage.removeItem(STORAGE_KEYS.ADMIN_ROLE);
     }
   }
 
+  // Super Admin (Jason) Password
+  getSuperAdminPassword() {
+    return localStorage.getItem(STORAGE_KEYS.SUPER_ADMIN_PASS) || 'asoJason2026#';
+  }
+
+  setSuperAdminPassword(newPass) {
+    localStorage.setItem(STORAGE_KEYS.SUPER_ADMIN_PASS, newPass);
+  }
+
+  // General Admin (正全 / 顧問) Password
+  getGeneralAdminPassword() {
+    return localStorage.getItem(STORAGE_KEYS.STAFF_ADMIN_PASS) || 'asoStaff2026@';
+  }
+
+  setGeneralAdminPassword(newPass) {
+    localStorage.setItem(STORAGE_KEYS.STAFF_ADMIN_PASS, newPass);
+  }
+
+  // Backward compatible getter/setter
   getAdminPassword() {
-    return localStorage.getItem(STORAGE_KEYS.ADMIN_PASS) || 'Aso#Nature2026';
+    return this.getSuperAdminPassword();
   }
 
   setAdminPassword(newPass) {
-    localStorage.setItem(STORAGE_KEYS.ADMIN_PASS, newPass);
+    this.setSuperAdminPassword(newPass);
   }
 
   verifyAdminPassword(inputPass) {
-    return inputPass === this.getAdminPassword();
+    if (inputPass === this.getSuperAdminPassword()) {
+      return { valid: true, role: 'super_admin' };
+    }
+    if (inputPass === this.getGeneralAdminPassword()) {
+      return { valid: true, role: 'general_admin' };
+    }
+    return { valid: false, role: null };
   }
 
   // --- Google Sheets / Cloud Sync Backend ---
