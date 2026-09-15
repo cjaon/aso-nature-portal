@@ -24,6 +24,39 @@ const ASO_STORES = window.ASO_STORES || [
 // Initial Seed Announcements
 const SEED_ANNOUNCEMENTS = [
   {
+    id: 'ANN-2026-004',
+    title: '【重大規範】客製化鞋墊交件公差標準化與驗收作業規範（長±2mm、寬±1mm）',
+    category: '製程公告',
+    author: '研發部 陳嘉祥',
+    date: '2026-09-07',
+    isPinned: true,
+    summary: '交件公差嚴格鎖定長度±2mm、寬度±1mm；全面終止由工廠代為協助「級放」；正全出貨全面拍照存證，釐清門市、設計與工廠三方責任。',
+    content: `致 全體自然足專案門市、設計師團隊、正全製程中心：
+
+為落實精準製造與交貨品質標準化，明確接單門市、設計師與正全工廠三方責任歸屬，研發部正式頒布交件公差與驗收作業規範：
+
+1. **尺寸公差標準**：
+   - 鞋墊縱向全長：公差標準嚴格抓 **±2.0 mm**。
+   - 前掌蹠骨橫寬：公差標準嚴格抓 **±1.0 mm**。
+   - 超出公差界限屬不合格品，工廠不得放行。
+
+2. **驗收唯一依據**：
+   - 一律以門市原始訂單上送審之鞋墊尺寸作為唯一驗收依據。
+   - **全面終止由工廠代為協助「級放」，如門市原始量測或訂單錯誤，由門市端負責**，不得要求工廠無償重製。
+
+3. **出貨全面實物鋼尺拍照存證**：
+   - 正全出貨前每雙鞋墊必須平放並排精密鋼尺拍照留證，並上傳系統存證後方得發貨。
+   - 門市收貨爭議一律以出貨佐證照片為責任判定標準。
+
+4. **近期專案與宣導**：
+   - 近期門市反映尺寸疑義之 3 雙鞋墊，研發部已安排正全重新製作，務求符合公差。
+   - 同步已要求正全義肢製造端落實出貨拍照機制。
+
+詳細圖解與工程藍圖請參閱附件官方規格公告單。`,
+    tags: ['交件公差', '驗收規範', '拍照存證', '研發部', '陳嘉祥'],
+    officialDocUrl: 'announcement-spec-20260907.html'
+  },
+  {
     id: 'ANN-2026-001',
     title: '【製程升級】Poron 前掌緩衝墊全面升級為雙密度 PR-V2 規格',
     category: '製程公告',
@@ -74,6 +107,20 @@ const SEED_ANNOUNCEMENTS = [
 
 // Initial Seed Wiki Articles (Case history & resolutions)
 const SEED_WIKI = [
+  {
+    id: 'W045',
+    title: '鞋墊表層皮面/布料脫膠掀起之門市快速黏著與工廠重貼SOP',
+    category: '其他',
+    processor: '門市技師',
+    secondaryProcessor: '正全義肢鞋墊製造商',
+    shoeModel: '全系列客製鞋墊 (Poron / 雙密度)',
+    symptom: '顧客穿著約 1~2 週後，前掌腳趾下壓處或足跟邊緣之表皮布料出現掀起脫膠，穿脫鞋時容易捲曲折痕。',
+    rootCause: '原廠熱壓貼合時受熱不均，或顧客出腳汗濕氣滲入邊緣造成環保水性膠水解。',
+    solution: '【處置方式】：\n1. 局部輕微掀起：門市技師使用專業鞋用強力接著劑，均勻薄塗於掀起接合面，靜置 3 分鐘半乾後加壓貼合，滾輪滾壓 30 秒即可交件。\n2. 大面積或嚴重脫落：開立維修單送回正全工廠，免費進行「全表皮除膠重貼」，工廠於 48 小時內重壓成型出貨。',
+    preventionNote: '提醒顧客若鞋內濕氣較重，鞋墊取出陰乾時切勿以吹風機高溫直吹，避免熱膠軟化。',
+    date: '2026-09-08',
+    views: 65
+  },
   {
     id: 'W042',
     title: 'ASICS KAYANO / 慢跑鞋窄楦前掌擠腳與鞋墊波浪隆起處置',
@@ -302,8 +349,22 @@ class Store {
   }
 
   init() {
-    if (!localStorage.getItem(STORAGE_KEYS.ANNOUNCEMENTS)) {
+    const rawAnn = localStorage.getItem(STORAGE_KEYS.ANNOUNCEMENTS);
+    if (!rawAnn) {
       localStorage.setItem(STORAGE_KEYS.ANNOUNCEMENTS, JSON.stringify(SEED_ANNOUNCEMENTS));
+    } else {
+      try {
+        const list = JSON.parse(rawAnn);
+        const idx = list.findIndex(a => a.id === 'ANN-2026-004');
+        if (idx !== -1) {
+          list[idx] = SEED_ANNOUNCEMENTS[0];
+        } else {
+          list.unshift(SEED_ANNOUNCEMENTS[0]);
+        }
+        localStorage.setItem(STORAGE_KEYS.ANNOUNCEMENTS, JSON.stringify(list));
+      } catch (e) {
+        localStorage.setItem(STORAGE_KEYS.ANNOUNCEMENTS, JSON.stringify(SEED_ANNOUNCEMENTS));
+      }
     }
     if (!localStorage.getItem(STORAGE_KEYS.WIKI)) {
       localStorage.setItem(STORAGE_KEYS.WIKI, JSON.stringify(SEED_WIKI));
