@@ -1366,6 +1366,66 @@ function updateWikiSuggestions() {
   }
 }
 
+function setFormCaseType(type) {
+  const isRepair = type === 'repair';
+  const typeInput = document.getElementById('complaint-case-type');
+  if (typeInput) typeInput.value = isRepair ? 'repair' : 'complaint';
+
+  const btnComplaint = document.getElementById('type-btn-complaint');
+  const btnRepair = document.getElementById('type-btn-repair');
+  if (btnComplaint && btnRepair) {
+    if (isRepair) {
+      btnRepair.className = 'py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 bg-white text-amber-700 shadow-xs border border-slate-200';
+      btnComplaint.className = 'py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 text-slate-600 hover:text-slate-900';
+    } else {
+      btnComplaint.className = 'py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 bg-white text-rose-700 shadow-xs border border-slate-200';
+      btnRepair.className = 'py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 text-slate-600 hover:text-slate-900';
+    }
+  }
+
+  // Update Category Label & Options
+  const catLabel = document.getElementById('complaint-category-label');
+  const catSelect = document.getElementById('complaint-category');
+  if (catLabel) {
+    catLabel.innerHTML = isRepair 
+      ? '售後維修保養項目 <span class="text-rose-500">*</span>' 
+      : '主要客訴分類 <span class="text-rose-500">*</span>';
+  }
+  if (catSelect) {
+    if (isRepair) {
+      catSelect.innerHTML = `
+        <option value="表皮脫落">表皮脫落 / 局部脫膠 (更換原廠表皮布面)</option>
+        <option value="泡棉壓扁">泡棉壓扁 / 彈性衰退 (更換高回彈緩衝中底)</option>
+        <option value="邊緣磨損">邊緣磨損修整 / 邊緣包覆補強</option>
+        <option value="翻新清潔">深層除臭清潔 / 整體抑菌翻新</option>
+        <option value="其他維修">其他耗損維修保養</option>
+      `;
+    } else {
+      catSelect.innerHTML = `
+        <option value="鞋墊做錯">鞋墊做錯 (規格不符 / 材質做錯 / 左右顛倒)</option>
+        <option value="尺寸不符">尺寸不符 (前掌過長起皺 / 邊緣卡死無法入鞋)</option>
+        <option value="穿著不適">客人穿著不適 (足弓頂撞劇痛 / 起水泡 / 異物感)</option>
+        <option value="其他">其他外觀瑕疵 / 責任換貨</option>
+      `;
+    }
+  }
+
+  // Dual SLA Panels
+  const panelComplaint = document.getElementById('panel-sla-complaint');
+  const panelRepair = document.getElementById('panel-sla-repair');
+  if (panelComplaint && panelRepair) {
+    if (isRepair) {
+      panelComplaint.classList.add('hidden');
+      panelRepair.classList.remove('hidden');
+    } else {
+      panelComplaint.classList.remove('hidden');
+      panelRepair.classList.add('hidden');
+    }
+  }
+
+  updateWikiSuggestions();
+}
+
 function initComplaintForm() {
   const form = document.getElementById('complaint-submission-form');
   if (!form) return;
@@ -1376,6 +1436,7 @@ function initComplaintForm() {
   form.addEventListener('submit', (e) => {
     e.preventDefault();
 
+    const caseType = document.getElementById('complaint-case-type')?.value || 'complaint';
     const storeCode = document.getElementById('complaint-store-code').value.trim() || '2009';
     const storeName = document.getElementById('complaint-store-name').value.trim() || '忠孝門市';
     const customerName = document.getElementById('complaint-name').value.trim();
@@ -1400,18 +1461,29 @@ function initComplaintForm() {
     // Determine initial auto assignment suggestion
     let defaultAssigned = '';
     let defaultAction = '';
-    if (category === '鞋墊做錯') {
-      defaultAssigned = '正全義肢鞋墊製造商';
-      defaultAction = '急件免費全新品重製';
-    } else if (category === '尺寸不符') {
-      defaultAssigned = '門市技師';
-      defaultAction = '現場修磨微調';
-    } else if (category === '穿著不適') {
-      defaultAssigned = '專業顧問';
-      defaultAction = '回店重測足壓調校';
+    if (caseType === 'repair') {
+      if (category === '表皮脫落' || category === '泡棉壓扁' || category === '翻新清潔') {
+        defaultAssigned = '正全義肢鞋墊製造商';
+        defaultAction = '送回正全更換表皮與翻新';
+      } else {
+        defaultAssigned = '門市技師';
+        defaultAction = '門市現場保養修磨';
+      }
+    } else {
+      if (category === '鞋墊做錯') {
+        defaultAssigned = '正全義肢鞋墊製造商';
+        defaultAction = '急件免費全新品重製';
+      } else if (category === '尺寸不符') {
+        defaultAssigned = '門市技師';
+        defaultAction = '現場修磨微調';
+      } else if (category === '穿著不適') {
+        defaultAssigned = '專業顧問';
+        defaultAction = '回店重測足壓調校';
+      }
     }
 
     const newCase = window.footwearStore.createComplaint({
+      caseType,
       storeCode,
       storeName,
       customerName,
@@ -1434,6 +1506,7 @@ function initComplaintForm() {
 
     // Reset Form
     form.reset();
+    setFormCaseType('complaint');
     selectedPainPoints = [];
     document.querySelectorAll('.hotspot-chip').forEach(c => c.classList.remove('selected'));
     updatePainPointDisplay();
@@ -1462,7 +1535,7 @@ function initComplaintForm() {
     // Show Success Modal with Case ID
     document.getElementById('submitted-case-id').textContent = newCase.id;
     document.getElementById('submit-success-modal').classList.remove('hidden');
-    showToast(`客訴案件 ${newCase.id} 已成功建檔！`, 'success');
+    showToast(`${caseType === 'repair' ? '售後維修' : '客訴案件'} ${newCase.id} 已成功建檔！`, 'success');
   });
 }
 
@@ -1506,6 +1579,18 @@ function executeTrackSearch() {
   resultCard.classList.remove('hidden');
 
   // Fill in Case Information
+  const isRepair = found.caseType === 'repair';
+  const trackTypeBadge = document.getElementById('track-type-badge');
+  if (trackTypeBadge) {
+    if (isRepair) {
+      trackTypeBadge.textContent = '🛠️ 售後維修保養';
+      trackTypeBadge.className = 'px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800';
+    } else {
+      trackTypeBadge.textContent = '🚨 品質客訴處理';
+      trackTypeBadge.className = 'px-2 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-800';
+    }
+  }
+
   document.getElementById('track-case-no').textContent = found.id;
   document.getElementById('track-customer-name').textContent = found.customerName + ' 貴賓';
   document.getElementById('track-store-info').textContent = `${found.storeCode || '2009'} ${found.storeName || '門市'}`;
@@ -1601,6 +1686,7 @@ let currentAdminStatus = 'all';
 function initAdminDashboard() {
   document.getElementById('admin-case-search')?.addEventListener('input', renderAdminCases);
   document.getElementById('admin-assigned-filter')?.addEventListener('change', renderAdminCases);
+  document.getElementById('admin-type-filter')?.addEventListener('change', renderAdminCases);
 }
 
 function switchAdminSubView(view) {
@@ -1644,6 +1730,12 @@ function renderAdminCases() {
     filtered = filtered.filter(c => c.status === currentAdminStatus);
   }
 
+  // Case type filter (complaint vs repair)
+  const typeFilter = document.getElementById('admin-type-filter')?.value;
+  if (typeFilter && typeFilter !== 'all') {
+    filtered = filtered.filter(c => (c.caseType || 'complaint') === typeFilter);
+  }
+
   const assignedFilter = document.getElementById('admin-assigned-filter')?.value;
   if (assignedFilter && assignedFilter !== 'all') {
     filtered = filtered.filter(c => c.assignedTo && c.assignedTo.includes(assignedFilter));
@@ -1673,7 +1765,7 @@ function renderAdminCases() {
   if (filtered.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="10" class="py-10 text-center text-slate-400">
+        <td colspan="11" class="py-10 text-center text-slate-400">
           查無符合狀態或條件的客訴案件
         </td>
       </tr>
@@ -1706,6 +1798,17 @@ function renderAdminCases() {
           <a href="javascript:void(0)" onclick="openCaseDrawer('${item.id}')" class="text-blue-600 hover:underline">
             ${item.id}
           </a>
+        </td>
+        <td class="py-3 px-3">
+          ${item.caseType === 'repair' ? `
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">
+              🛠️ 維修
+            </span>
+          ` : `
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
+              🚨 客訴
+            </span>
+          `}
         </td>
         <td class="py-3 px-3">
           <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-xs font-medium font-mono">
@@ -2009,8 +2112,26 @@ function openCaseDrawer(caseId) {
   if (!item) return;
   activeDrawerCaseId = caseId;
 
+  const isRepair = item.caseType === 'repair';
   const drawer = document.getElementById('case-drawer-modal');
   document.getElementById('drawer-case-id').textContent = item.id;
+
+  const drawerTypeBadge = document.getElementById('drawer-type-badge');
+  if (drawerTypeBadge) {
+    if (isRepair) {
+      drawerTypeBadge.textContent = '🛠️ 售後維修工單';
+      drawerTypeBadge.className = 'px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800';
+    } else {
+      drawerTypeBadge.textContent = '🚨 品質客訴工單';
+      drawerTypeBadge.className = 'px-2 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-800';
+    }
+  }
+
+  const drawerSectionTitle = document.getElementById('drawer-problem-section-title');
+  if (drawerSectionTitle) {
+    drawerSectionTitle.textContent = isRepair ? '維修項目與耗損問題描述' : '問題類別與客訴原因描述';
+  }
+
   document.getElementById('drawer-store-info').textContent = `${item.storeCode || '2009'} ${item.storeName || '門市'}`;
   document.getElementById('drawer-customer-name').textContent = item.customerName;
   document.getElementById('drawer-order-no').textContent = item.orderNo;
@@ -2042,8 +2163,8 @@ function openCaseDrawer(caseId) {
 
   // Editable Fields
   document.getElementById('drawer-status').value = item.status;
-  document.getElementById('drawer-assigned').value = item.assignedTo || '正全義肢鞋墊製造商';
-  document.getElementById('drawer-action-plan').value = item.actionPlan || '急件免費全新品重製';
+  document.getElementById('drawer-assigned').value = item.assignedTo || (isRepair ? '正全義肢鞋墊製造商' : '正全義肢鞋墊製造商');
+  document.getElementById('drawer-action-plan').value = item.actionPlan || (isRepair ? '送回正全更換表皮與翻新' : '急件免費全新品重製');
   document.getElementById('drawer-work-order').value = item.workOrderNo || '';
   document.getElementById('drawer-diagnosis-log').value = item.diagnosisLog || '';
   document.getElementById('drawer-delivery-type').value = item.deliveryType || '黑貓宅配到府';
@@ -2130,6 +2251,7 @@ function printWorkOrder() {
   const printArea = document.getElementById('printable-work-order');
   if (!printArea) return;
 
+  const isRepair = item.caseType === 'repair';
   const trackUrl = `${window.location.origin}${window.location.pathname}?case=${item.id}`;
   const qrSvg = QRCodeGenerator.generateSVG(trackUrl, 90);
 
@@ -2140,7 +2262,7 @@ function printWorkOrder() {
           <img src="assets/aso_nature_logo.png" alt="ASO+ NATURE 足醫中心" class="h-12 rounded object-contain border border-slate-200" onerror="this.style.display='none'">
           <div>
             <h1 class="text-xl font-bold">ASO+ NATURE 足醫中心 × 正全義肢鞋墊製造商</h1>
-            <p class="text-xs text-slate-700">3D 列印自然足鞋墊客訴處置/重製派工單 (主管審定：Jason)</p>
+            <p class="text-xs text-slate-700">${isRepair ? '3D 自然足鞋墊售後維修保養派工單' : '3D 列印自然足鞋墊客訴處置/重製派工單'} (主管審定：Jason)</p>
           </div>
         </div>
         <div class="flex items-center gap-3 text-right">
@@ -2160,13 +2282,13 @@ function printWorkOrder() {
         <div><b>原訂單編號：</b> ${item.orderNo}</div>
         <div><b>客戶姓名：</b> ${item.customerName} (${item.phone})</div>
         <div><b>搭配鞋款：</b> ${item.shoeModel} (${item.shoeSize})</div>
-        <div><b>客訴類別：</b> ${item.category} (優先級：${item.priority})</div>
+        <div><b>${isRepair ? '維修項目：' : '客訴類別：'}</b> ${item.category} (優先級：${item.priority})</div>
         <div><b>主要處理人：</b> ${item.assignedTo}</div>
         <div class="col-span-2"><b>核定處置手段：</b> ${item.actionPlan}</div>
       </div>
 
       <div class="text-sm mb-4 border-b border-black pb-4">
-        <div class="font-bold mb-1">【客訴主訴與足部痛點】</div>
+        <div class="font-bold mb-1">【${isRepair ? '維修項目與耗損狀況描述' : '客訴主訴與足部痛點'}】</div>
         <p class="mb-2 text-xs leading-relaxed">${item.customerNotes}</p>
         <div class="text-xs">痛點勾選：${(item.painPoints || []).join('、 ') || '無'}</div>
         ${item.photoUrl ? `
@@ -2183,7 +2305,7 @@ function printWorkOrder() {
       </div>
 
       <div class="text-sm mb-4 border-b border-black pb-4">
-        <div class="font-bold mb-1">【出廠 QC 品管覆驗簽章】</div>
+        <div class="font-bold mb-1">【${isRepair ? '維修翻新品質覆核簽章' : '出廠 QC 品管覆驗簽章'}】</div>
         <div class="grid grid-cols-3 gap-2 text-xs mt-3">
           <div class="border border-black p-2 h-16">卡尺高度覆核：</div>
           <div class="border border-black p-2 h-16">原鞋樣板套量：</div>
@@ -2386,6 +2508,7 @@ window.filterWikiProcessor = filterWikiProcessor;
 window.openWikiModal = openWikiModal;
 window.closeWikiModal = closeWikiModal;
 window.closeSuccessModal = closeSuccessModal;
+window.setFormCaseType = setFormCaseType;
 window.jumpToTrackCase = jumpToTrackCase;
 window.executeTrackSearch = executeTrackSearch;
 window.filterAdminStatus = filterAdminStatus;

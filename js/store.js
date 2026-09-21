@@ -175,6 +175,7 @@ const SEED_WIKI = [
 const SEED_COMPLAINTS = [
   {
     id: 'CMP-20260905-0102',
+    caseType: 'complaint',
     storeCode: '2009',
     storeName: '忠孝門市',
     customerName: '張冠廷',
@@ -184,7 +185,9 @@ const SEED_COMPLAINTS = [
     category: '鞋墊做錯',
     priority: '急件',
     shoeModel: 'ASICS GEL-KAYANO 30 (2E)',
-    shoeSize: 'US 10.5',
+    shoeSize: '左: 28.5 cm / 右: 28.5 cm',
+    shoeSizeLeft: '28.5',
+    shoeSizeRight: '28.5',
     wearDays: '初次試穿即不適',
     painPoints: ['內側足弓過高', '左右足弓高度不對稱'],
     customerNotes: '收到鞋墊放入球鞋試穿，右腳足弓像有一顆硬石頭狠狠頂著，非常劇痛。左腳感覺剛好，兩隻腳踩起來高低差非常明顯！',
@@ -203,7 +206,40 @@ const SEED_COMPLAINTS = [
     updatedAt: '2026-09-05 14:15'
   },
   {
+    id: 'REP-20260906-0031',
+    caseType: 'repair',
+    storeCode: '2009',
+    storeName: '忠孝門市',
+    customerName: '王嘉豪',
+    phone: '0935-778-899',
+    email: 'jiahao.wang@example.com',
+    orderNo: 'ORD-2026-7732',
+    category: '表皮脫落',
+    priority: '一般',
+    shoeModel: 'ASICS KAYANO 29',
+    shoeSize: '左: 27.0 cm / 右: 27.0 cm',
+    shoeSizeLeft: '27.0',
+    shoeSizeRight: '27.0',
+    wearDays: '穿著超過一個月',
+    painPoints: ['鞋墊上表皮脫落'],
+    customerNotes: '鞋墊穿著約半年，前掌邊緣表皮開始掀起脫膠，希望能回廠重新黏合換皮保養。',
+    status: '正全重製中',
+    assignedTo: '正全義肢鞋墊製造商',
+    diagnosisLog: '2026-09-06 門市收件檢視，底層碳纖支撐結構正常，僅表面親膚層與 Poron 接縫處脫膠，符合售後換皮保養程序，已安排送交正全翻新。',
+    actionPlan: '送回正全更換表皮',
+    workOrderNo: 'WO-REPAIR-0906-R',
+    deliveryType: '預約門市試穿取件',
+    trackingCode: '預約 9/12 門市試穿驗收',
+    d3Log: '',
+    d14Rating: 0,
+    d14Log: '',
+    isSavedToWiki: false,
+    createdAt: '2026-09-06 11:20',
+    updatedAt: '2026-09-06 16:30'
+  },
+  {
     id: 'CMP-20260904-0088',
+    caseType: 'complaint',
     storeCode: '2074',
     storeName: '板橋府中門市',
     customerName: '林美玲',
@@ -567,21 +603,24 @@ class Store {
     return list.find(c => c.id === id || c.orderNo === id);
   }
 
-  generateCaseId() {
+  generateCaseId(caseType = 'complaint') {
     const today = new Date();
     const y = today.getFullYear();
     const m = String(today.getMonth() + 1).padStart(2, '0');
     const d = String(today.getDate()).padStart(2, '0');
     const rand = Math.floor(1000 + Math.random() * 9000);
-    return `CMP-${y}${m}${d}-${rand}`;
+    const prefix = caseType === 'repair' ? 'REP' : 'CMP';
+    return `${prefix}-${y}${m}${d}-${rand}`;
   }
 
   createComplaint(data) {
     const list = this.getComplaints();
-    const id = this.generateCaseId();
+    const caseType = data.caseType || 'complaint';
+    const id = this.generateCaseId(caseType);
     const nowStr = new Date().toLocaleString('zh-TW', { hour12: false });
     const newCase = {
       id,
+      caseType,
       storeCode: data.storeCode || '2009',
       storeName: data.storeName || '忠孝門市',
       status: '待受理',
@@ -687,11 +726,16 @@ class Store {
   getComplaintStats() {
     const list = this.getComplaints();
     const total = list.length;
+    const complaintsOnly = list.filter(c => (c.caseType || 'complaint') === 'complaint');
+    const repairsOnly = list.filter(c => c.caseType === 'repair');
+    const complaintTotal = complaintsOnly.length;
+    const repairTotal = repairsOnly.length;
     
-    // Store distribution
+    // Store distribution (Ranked by quality complaints to avoid unfair penalty from repairs)
     const storeMap = {};
+    const repairStoreMap = {};
     // Category distribution
-    const categoryMap = { '鞋墊做錯': 0, '尺寸不符': 0, '穿著不適': 0, '其他': 0 };
+    const categoryMap = { '鞋墊做錯': 0, '尺寸不符': 0, '穿著不適': 0, '表皮脫落': 0, '其他': 0 };
     // Processor distribution
     const processorMap = { '正全義肢鞋墊製造商': 0, '專業顧問': 0, 'Jason': 0, '門市技師': 0, '未指派': 0 };
     // Pain points
@@ -706,15 +750,20 @@ class Store {
     let ratedCount = 0;
 
     list.forEach(c => {
-      // Store
+      const isRepair = c.caseType === 'repair';
       const storeKey = `${c.storeCode || '未知'} ${c.storeName || '門市'}`;
-      storeMap[storeKey] = (storeMap[storeKey] || 0) + 1;
+
+      if (isRepair) {
+        repairStoreMap[storeKey] = (repairStoreMap[storeKey] || 0) + 1;
+      } else {
+        storeMap[storeKey] = (storeMap[storeKey] || 0) + 1;
+      }
 
       // Category
       if (categoryMap.hasOwnProperty(c.category)) {
         categoryMap[c.category]++;
       } else {
-        categoryMap['其他']++;
+        categoryMap['其他'] = (categoryMap['其他'] || 0) + 1;
       }
 
       // Processor
@@ -753,12 +802,15 @@ class Store {
     });
 
     const storeRankings = Object.entries(storeMap)
-      .map(([name, count]) => ({ name, count, percent: total > 0 ? Math.round((count / total) * 100) : 0 }))
+      .map(([name, count]) => ({ name, count, percent: complaintTotal > 0 ? Math.round((count / complaintTotal) * 100) : 0 }))
       .sort((a, b) => b.count - a.count);
 
     return {
       total,
+      complaintTotal,
+      repairTotal,
       storeRankings,
+      repairStoreMap,
       categories: categoryMap,
       processors: processorMap,
       painPoints: Object.entries(painMap).sort((a, b) => b[1] - a[1]).slice(0, 6),

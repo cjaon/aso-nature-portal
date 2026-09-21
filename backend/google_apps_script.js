@@ -50,7 +50,7 @@ function initialSetup() {
       '原訂單號', '客訴分類', '優先級', '搭配鞋款', '鞋子尺碼', '穿著時長',
       '足部痛點', '主訴詳情', '處理狀態', '責任處理人', '處置手段', '工單號碼',
       '交件方式', '物流追蹤碼', 'D+3追蹤紀錄', 'D+14滿意星級', 'D+14結案說明',
-      '立案時間', '最後更新', '照片附件'
+      '立案時間', '最後更新', '照片附件', '案件性質'
     ];
     cSheet.appendRow(cHeaders);
     cSheet.getRange(1, 1, 1, cHeaders.length).setBackground('#1e293b').setFontColor('#ffffff').setFontWeight('bold');
@@ -151,7 +151,8 @@ function doPost(e) {
         c.d14Log || '',
         c.createdAt,
         c.updatedAt,
-        c.photoUrl || ''
+        c.photoUrl || '',
+        c.caseType === 'repair' ? '售後維修' : '品質客訴'
       ];
       ss.getSheetByName(SHEET_NAMES.COMPLAINTS).appendRow(row);
       return createJsonResponse({ success: true, caseId: c.id });
@@ -183,6 +184,7 @@ function doPost(e) {
         if (updates.d14Log !== undefined) cSheet.getRange(rowIndex, 23).setValue(updates.d14Log);
         if (updates.updatedAt !== undefined) cSheet.getRange(rowIndex, 25).setValue(updates.updatedAt);
         if (updates.photoUrl !== undefined) cSheet.getRange(rowIndex, 26).setValue(updates.photoUrl);
+        if (updates.caseType !== undefined) cSheet.getRange(rowIndex, 27).setValue(updates.caseType === 'repair' ? '售後維修' : '品質客訴');
         return createJsonResponse({ success: true, updatedId: targetId });
       } else {
         return createJsonResponse({ success: false, error: 'Case ID not found' });
@@ -240,7 +242,8 @@ function parseComplaintRow(row) {
     d14Log: row[22],
     createdAt: row[23],
     updatedAt: row[24],
-    photoUrl: row[25] || ''
+    photoUrl: row[25] || '',
+    caseType: row[26] === '售後維修' ? 'repair' : 'complaint'
   };
 }
 
