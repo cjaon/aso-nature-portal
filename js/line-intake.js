@@ -25,6 +25,18 @@ function setLineBinding(binding) {
   reporter.value = binding.reporterName; reporter.readOnly = true;
 }
 
+function lockStoreFromQr(storeCode) {
+  const select = document.getElementById('complaint-store-select');
+  const code = document.getElementById('complaint-store-code');
+  const name = document.getElementById('complaint-store-name');
+  const option = select?.querySelector(`option[value="${storeCode}"]`);
+  if (!option || !select || !code || !name) return null;
+  select.value = storeCode; select.disabled = true;
+  code.value = storeCode; code.readOnly = true;
+  name.value = option.dataset.name || option.textContent; name.readOnly = true;
+  return { storeCode, storeName: option.dataset.name || option.textContent };
+}
+
 function toMillimeters(centimeters) {
   return centimeters ? String(Math.round(Number(centimeters) * 10)) : '';
 }
@@ -36,14 +48,15 @@ async function initLineIntake() {
   try {
     await liff.init({ liffId: lineIntake.liffId });
     if (!liff.isLoggedIn()) return liff.login({ redirectUri: location.href });
+    const qrStore = lockStoreFromQr(new URLSearchParams(location.search).get('store'));
     const result = await linePost('getStaffBinding');
     if (result.binding) return setLineBinding(result.binding);
     const reporterName = prompt('首次使用：請輸入回報人姓名');
-    const storeCode = prompt('請輸入門市代號');
+    const storeCode = qrStore?.storeCode || prompt('請輸入門市代號');
     const invitationCode = prompt('請輸入門市驗證碼');
     const option = document.querySelector(`#complaint-store-select option[value="${storeCode}"]`);
     if (!reporterName || !option || !invitationCode) throw new Error('綁定資料不完整或門市代號不存在');
-    const bound = await linePost('bindStaff', { reporterName, storeCode, storeName: option.dataset.name || option.textContent, invitationCode });
+    const bound = await linePost('bindStaff', { reporterName, storeCode, storeName: qrStore?.storeName || option.dataset.name || option.textContent, invitationCode });
     setLineBinding(bound.binding);
   } catch (error) { showToast(`LINE 身分驗證失敗：${error.message}`, 'error'); }
 }
