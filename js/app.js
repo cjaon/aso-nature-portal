@@ -217,6 +217,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initFootPainSelector();
   initPhotoAnnotation();
   initComplaintForm();
+  initLineIntakeContext();
   initCaseTracker();
   initAdminDashboard();
   initAdminAuth();
@@ -1423,7 +1424,52 @@ function setFormCaseType(type) {
     }
   }
 
+  renderIssueCodeOptions();
   updateWikiSuggestions();
+}
+
+function renderIssueCodeOptions() {
+  const container = document.getElementById('complaint-issue-codes');
+  const caseType = document.getElementById('complaint-case-type')?.value || 'complaint';
+  const category = document.getElementById('complaint-category')?.value || '';
+  if (!container) return;
+  const options = caseType === 'repair'
+    ? ['更換奈米皮', '更換運動抑菌布', '局部脫膠', '整片脫落', '泡棉壓扁', '邊緣磨損', '除臭翻新']
+    : category === '尺寸不符'
+      ? ['過長', '過短', '過寬', '過窄', '左右尺寸不一致']
+      : category === '穿著不適'
+        ? ['足弓過頂', '前掌壓迫', '後跟壓迫', '外側磨腳', '高低差', '起水泡']
+        : ['材質做錯', '左右腳做反', '規格做錯', '外觀瑕疵'];
+  container.innerHTML = options.map(code => `
+    <label class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg cursor-pointer">
+      <input type="checkbox" name="issue-code" value="${code}" class="rounded border-slate-300 text-blue-600 focus:ring-blue-500">${code}
+    </label>
+  `).join('');
+}
+
+function initLineIntakeContext() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('source') !== 'line') return;
+  const storeCode = params.get('store');
+  const reporterName = params.get('reporter');
+  const sourceInput = document.getElementById('complaint-source');
+  if (sourceInput) sourceInput.value = 'line';
+  if (storeCode) {
+    const select = document.getElementById('complaint-store-select');
+    const codeInput = document.getElementById('complaint-store-code');
+    const nameInput = document.getElementById('complaint-store-name');
+    const option = select?.querySelector(`option[value="${storeCode}"]`);
+    if (option && select && codeInput && nameInput) {
+      select.value = storeCode;
+      codeInput.value = storeCode;
+      nameInput.value = option.dataset.name || '';
+      select.disabled = true;
+      codeInput.readOnly = true;
+      nameInput.readOnly = true;
+    }
+  }
+  if (reporterName) document.getElementById('complaint-reporter-name').value = reporterName;
+  switchView('complaint-form');
 }
 
 function initComplaintForm() {
@@ -1431,7 +1477,9 @@ function initComplaintForm() {
   if (!form) return;
 
   document.getElementById('complaint-category')?.addEventListener('change', updateWikiSuggestions);
+  document.getElementById('complaint-category')?.addEventListener('change', renderIssueCodeOptions);
   document.getElementById('complaint-shoe')?.addEventListener('input', updateWikiSuggestions);
+  renderIssueCodeOptions();
 
   form.addEventListener('submit', (e) => {
     e.preventDefault();
@@ -1452,6 +1500,14 @@ function initComplaintForm() {
     const wearDays = document.getElementById('complaint-days').value;
     const customerNotes = document.getElementById('complaint-notes').value.trim();
     const photoUrl = document.getElementById('complaint-annotated-photo')?.value || '';
+    const source = document.getElementById('complaint-source')?.value || 'web';
+    const reporterName = document.getElementById('complaint-reporter-name')?.value.trim() || '';
+    const issueCodes = Array.from(document.querySelectorAll('input[name="issue-code"]:checked')).map(input => input.value);
+    const replacementMaterial = document.getElementById('complaint-replacement-material')?.value || '';
+    const footSide = document.getElementById('complaint-foot-side')?.value || '';
+    const toMillimeters = (centimeters) => centimeters ? String(Math.round(Number(centimeters) * 10)) : '';
+    const measuredLengthMm = toMillimeters(document.getElementById('complaint-measured-length')?.value || '');
+    const measuredWidthMm = toMillimeters(document.getElementById('complaint-measured-width')?.value || '');
 
     if (!customerName || !phone || !orderNo || !category || !customerNotes) {
       showToast('請完整填寫必填欄位與事由描述！', 'error');
@@ -1500,6 +1556,14 @@ function initComplaintForm() {
       painPoints: [...selectedPainPoints],
       customerNotes,
       photoUrl,
+      photoUrls: photoUrl ? [photoUrl] : [],
+      source,
+      reporterName,
+      issueCodes,
+      replacementMaterial,
+      footSide,
+      measuredLengthMm,
+      measuredWidthMm,
       assignedTo: defaultAssigned,
       actionPlan: defaultAction
     });
