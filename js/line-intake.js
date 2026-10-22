@@ -25,6 +25,10 @@ function setLineBinding(binding) {
   reporter.value = binding.reporterName; reporter.readOnly = true;
 }
 
+function toMillimeters(centimeters) {
+  return centimeters ? String(Math.round(Number(centimeters) * 10)) : '';
+}
+
 async function initLineIntake() {
   if (new URLSearchParams(location.search).get('source') !== 'line') return;
   document.getElementById('complaint-source').value = 'line';
@@ -53,7 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const value = id => document.getElementById(id)?.value.trim() || '';
     try {
       const result = await linePost('addLineComplaint', {
-        caseType: value('complaint-case-type'), customerName: value('complaint-name'), phone: value('complaint-phone'), email: value('complaint-email'), orderNo: value('complaint-order'), category: value('complaint-category'), priority: value('complaint-priority'), shoeModel: value('complaint-shoe'), shoeSize: `左: ${value('complaint-size-left')} cm / 右: ${value('complaint-size-right')} cm`, wearDays: value('complaint-days'), painPoints: [...document.querySelectorAll('.hotspot-chip.selected')].map(x => x.dataset.painPoint), customerNotes: value('complaint-notes'), photoUrl: value('complaint-annotated-photo'), issueCodes: [...document.querySelectorAll('input[name="issue-code"]:checked')].map(x => x.value), replacementMaterial: value('complaint-replacement-material'), footSide: value('complaint-foot-side'), measuredLengthMm: value('complaint-measured-length'), measuredWidthMm: value('complaint-measured-width')
+        caseType: value('complaint-case-type'), customerName: value('complaint-name'), phone: value('complaint-phone'), email: value('complaint-email'), orderNo: value('complaint-order'), category: value('complaint-category'), priority: value('complaint-priority'), shoeModel: value('complaint-shoe'), shoeSize: `左: ${value('complaint-size-left')} cm / 右: ${value('complaint-size-right')} cm`, wearDays: value('complaint-days'), painPoints: [...document.querySelectorAll('.hotspot-chip.selected')].map(x => x.dataset.painPoint), customerNotes: value('complaint-notes'), photoUrl: value('complaint-annotated-photo'), issueCodes: [...document.querySelectorAll('input[name="issue-code"]:checked')].map(x => x.value), replacementMaterial: value('complaint-replacement-material'), footSide: value('complaint-foot-side'), measuredLengthMm: toMillimeters(value('complaint-measured-length')), measuredWidthMm: toMillimeters(value('complaint-measured-width'))
       });
       alert(`案件 ${result.caseId} 已成功建檔`);
     } catch (error) { showToast(error.message || '案件送出失敗', 'error'); }
